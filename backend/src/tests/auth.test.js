@@ -9,12 +9,20 @@ jest.mock("bcryptjs", () => ({
     hash: jest.fn(),
 }));
 
-jest.mock("../models/userModel", () => ({
-    findOne: jest.fn(),
-    findById: jest.fn(),
-    findByIdAndUpdate: jest.fn(),
-    findByIdAndDelete: jest.fn(),
-}));
+jest.mock("../models/userModel", () => {
+    const MockUser = jest.fn((data) => ({
+        ...data,
+        save: MockUser.mockSave || jest.fn().mockResolvedValue(undefined),
+    }));
+
+    MockUser.findOne = jest.fn();
+    MockUser.findById = jest.fn();
+    MockUser.findByIdAndUpdate = jest.fn();
+    MockUser.findByIdAndDelete = jest.fn();
+    MockUser.mockSave = jest.fn().mockResolvedValue(undefined);
+
+    return MockUser;
+});
 
 const bcryptjs = require("bcryptjs");
 const User = require("../models/userModel");
@@ -38,11 +46,59 @@ describe("auth flow", () => {
 
     beforeEach(() => {
         jest.clearAllMocks();
+        User.mockSave = jest.fn().mockResolvedValue(undefined);
         process.env = { ...OLD_ENV, JWT_SECRET: "test-secret" };
     });
 
     afterAll(() => {
         process.env = OLD_ENV;
+    });
+
+    test("signup hashes password, saves user, and redirects to login", async () => {
+        User.findOne.mockResolvedValue(null);
+        bcryptjs.genSalt.mockResolvedValue("salt");
+        bcryptjs.hash.mockResolvedValue("hashed-password");
+
+        const response = await request(createApp())
+            .post("/api/auth/signup")
+            .send({ name: "Bryan", email: "bryan@example.com", password: "Password123!" });
+
+        expect(response.status).toBe(302);
+        expect(response.headers.location).toBe("/login");
+        expect(User.findOne).toHaveBeenCalledWith({ $or: [{ name: "Bryan" }, { email: "bryan@example.com" }] });
+        expect(bcryptjs.hash).toHaveBeenCalledWith("Password123!", "salt");
+        expect(User).toHaveBeenCalledWith({
+            name: "Bryan",
+            email: "bryan@example.com",
+            passwordHash: "hashed-password",
+        });
+        expect(User.mockSave).toHaveBeenCalled();
+    });
+
+    test("signup returns 409 when name or email already exists", async () => {
+        User.findOne.mockResolvedValue({ _id: "existing-user" });
+
+        const response = await request(createApp())
+            .post("/api/auth/signup")
+            .send({ name: "Bryan", email: "bryan@example.com", password: "Password123!" });
+
+        expect(response.status).toBe(409);
+        expect(response.body).toEqual({ message: "User already exists" });
+        expect(User.mockSave).not.toHaveBeenCalled();
+    });
+
+    test("signup maps duplicate key save errors to 409", async () => {
+        User.findOne.mockResolvedValue(null);
+        User.mockSave = jest.fn().mockRejectedValue({ code: 11000 });
+        bcryptjs.genSalt.mockResolvedValue("salt");
+        bcryptjs.hash.mockResolvedValue("hashed-password");
+
+        const response = await request(createApp())
+            .post("/api/auth/signup")
+            .send({ name: "Bryan", email: "bryan@example.com", password: "Password123!" });
+
+        expect(response.status).toBe(409);
+        expect(response.body).toEqual({ message: "User already exists" });
     });
 
     test("localhost login cookie is set without Secure", async () => {
@@ -170,6 +226,27 @@ describe("auth flow", () => {
         expect(user.save).not.toHaveBeenCalled();
     });
 
+
+    test("update rejects missing token before controller lookup", async () => {
+        const response = await request(createApp())
+            .post("/api/auth/update")
+            .send({ password: "current-password", name: "New" });
+
+        expect(response.status).toBe(401);
+        expect(response.body).toEqual({ message: "Unauthorized: No token provided" });
+        expect(User.findById).not.toHaveBeenCalled();
+    });
+
+    test("delete rejects invalid token before controller lookup", async () => {
+        const response = await request(createApp())
+            .post("/api/auth/delete")
+            .set("Cookie", "token=bad-token")
+            .send({ password: "current-password" });
+
+        expect(response.status).toBe(401);
+        expect(response.body).toEqual({ message: "Unauthorized: Invalid token" });
+        expect(User.findById).not.toHaveBeenCalled();
+    });
     test("delete uses JWT user id, validates password, deletes user, and clears cookie", async () => {
         const token = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
         const user = { passwordHash: "hash" };
