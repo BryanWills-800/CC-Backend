@@ -195,3 +195,5 @@ const deleteUser = async (req, res) => {
 }
 
 module.exports = { signup, login, update, logout, deleteUser };
+
+
