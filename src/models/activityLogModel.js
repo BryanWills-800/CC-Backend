@@ -2,8 +2,18 @@ const mongoose = require("mongoose");
 
 const activityLogSchema = new mongoose.Schema(
   {
-    team: { type: mongoose.Schema.Types.ObjectId, ref: "Team", required: true, index: true },
-    actor: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    team: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Team",
+      required: true,
+      index: true,
+    },
+    actor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     action: {
       type: String,
       required: true,
@@ -21,14 +31,28 @@ const activityLogSchema = new mongoose.Schema(
         "task.deleted",
         "comment.created",
         "comment.updated",
-        "comment.deleted"
+        "comment.deleted",
       ],
-      index: true
+      index: true,
     },
-    entityType: { type: String, enum: ["team", "project", "task", "comment", "user"], required: true },
-    entityId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
-    metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
-    ipAddress: { type: String, default: null }
+    entityType: {
+      type: String,
+      enum: ["team", "project", "task", "comment", "user"],
+      required: true,
+    },
+    entityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      index: true,
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    ipAddress: {
+      type: String,
+      default: null,
+    },
   },
   { timestamps: true }
 );
