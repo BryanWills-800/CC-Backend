@@ -29,7 +29,7 @@ app.use('/css', express.static(path.join(__dirname, 'public/css')));
 
 // View Engine
 app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views"));
+app.set("views", path.join(__dirname, "views", "mainView"));
 
 // Routes
 app.use("/api/auth", authRoutes);
