@@ -1,4 +1,5 @@
 const express = require("express")
+const { actionController } = require("../controllers/actionController");
 const verifyToken = require("../middlewares/authMiddleware");
 const authorizeRoles = require("../middlewares/roleMiddleware");
 const router = express.Router()
@@ -29,5 +30,10 @@ router.get(
     (req, res) => {
         res.send("User Content");
     })
+
+router.get('/actions', actionController)
+router.post('/actions', actionController)
+
+// router.post
 
 module.exports = router

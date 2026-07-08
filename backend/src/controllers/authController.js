@@ -17,7 +17,7 @@ const loginCookieOptions = () => ({
 const signup = async (req, res) => {
     try {
         const { name, email, password } = req.body;
-        const user = await User.findOne({ name });
+        const user = await User.findOne({ $or: [{ name }, { email }] });
         if (user) {
             return res
                 .status(409)
@@ -26,6 +26,7 @@ const signup = async (req, res) => {
 
         const salt = await bcryptjs.genSalt(10);
         const hash = await bcryptjs.hash(password, salt);
+
         const newUser = User({
             name: name,
             email: email,
@@ -36,6 +37,12 @@ const signup = async (req, res) => {
             .status(201)
             .redirect("/login");
     } catch (error) {
+        if (error.code === 11000) {
+            return res
+                .status(409)
+                .json({ message: "User already exists" });
+        }
+
         res
             .status(500)
             .json({ message: error.message })
