@@ -33,6 +33,9 @@ body {
 
 main {
     min-height: 100vh;
+    width: min(1120px, 100% - 32px);
+    margin: 0 auto;
+    padding: 24px 0;
 }
 
 a {
@@ -41,12 +44,20 @@ a {
 }
 
 button,
-input {
+input,
+select {
     font: inherit;
 }
 
 .page-spacer {
     min-height: 88px;
+}
+
+.auth-shell {
+    min-height: calc(100vh - 48px);
+    display: grid;
+    place-items: center;
+    padding: 32px 0;
 }
 
 .auth-card {
@@ -63,6 +74,13 @@ input {
     margin: 0 0 22px;
     text-align: center;
     letter-spacing: 0;
+    font-size: 28px;
+    line-height: 1.15;
+}
+
+.auth-form {
+    display: grid;
+    gap: 12px;
 }
 
 .auth-card label {
@@ -249,55 +267,6 @@ body[style] {
     color: var(--text) !important;
 }
 
-main {
-    width: min(1120px, 100% - 32px);
-    margin: 0 auto;
-    padding: 24px 0;
-}
-
-select {
-    font: inherit;
-}
-
-form[action="/api/auth/signup"],
-form[action="/api/auth/login"] {
-    width: min(100% - 32px, 380px);
-    margin: 24px auto;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 24px;
-    background: linear-gradient(180deg, #24364a, #1b2836);
-    box-shadow: var(--shadow);
-}
-
-form[action="/api/auth/signup"] label,
-form[action="/api/auth/login"] label {
-    display: block;
-    margin-bottom: 6px;
-    color: var(--text-muted);
-    font-size: 14px;
-}
-
-form[action="/api/auth/signup"] input,
-form[action="/api/auth/signup"] select,
-form[action="/api/auth/login"] input {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.94);
-    color: var(--ink);
-}
-
-form[action="/api/auth/signup"] input[type="submit"],
-form[action="/api/auth/login"] input[type="submit"] {
-    width: auto;
-    border: 0;
-    background: var(--accent);
-    color: #fff;
-    cursor: pointer;
-}
-
 form[action="/api/content/actions"],
 .role-action-grid {
     width: min(1120px, 100%);
@@ -325,3 +294,5 @@ form[action="/api/content/actions"] button:focus {
     transform: translateY(-1px);
     outline: none;
 }
+
+
