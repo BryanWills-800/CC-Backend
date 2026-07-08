@@ -1,0 +1,113 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: rgb(30, 30, 30);
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+main {
+    min-height: 100vh;
+}
+
+a {
+    color: white;
+}
+
+.page-spacer {
+    min-height: 100px;
+}
+
+.auth-card {
+    width: min(100% - 32px, 320px);
+    margin: 0 auto;
+    border: 2px solid white;
+    padding: 20px;
+    background-color: cornflowerblue;
+}
+
+.auth-card h2 {
+    margin: 0 0 20px;
+    text-align: center;
+}
+
+.auth-card label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.auth-card input[type="text"],
+.auth-card input[type="email"],
+.auth-card input[type="password"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #d8e0f0;
+    border-radius: 4px;
+}
+
+.auth-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+
+.home-title {
+    background-color: blue;
+    color: whitesmoke;
+    margin: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 50px;
+}
+
+.home-links {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+
+.toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 20px 50px 0;
+}
+
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 5fr);
+    gap: 10px;
+    padding: 50px;
+}
+
+.action-button {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    max-width: 250px;
+    cursor: pointer;
+}
+
+.action-button:hover,
+.action-button:focus {
+    background-color: #d8e0f0;
+}
+
+@media (max-width: 700px) {
+    .home-title {
+        font-size: 32px;
+    }
+
+    .toolbar {
+        padding: 16px 24px 0;
+    }
+
+    .action-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        padding: 24px;
+    }
+}

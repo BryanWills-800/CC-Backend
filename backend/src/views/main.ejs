@@ -1,12 +1,12 @@
-<div style="display: flex; justify-content: flex-end; padding: 20px 50px 0;">
+<div class="toolbar">
     <form action="/api/auth/logout" method="post">
-        <button type="submit" style="padding: 10px; border: none; border-radius: 5px; max-width: 250px;">Logout</button>
+        <button type="submit" class="action-button">Logout</button>
     </form>
 </div>
 
-<div style="display: grid; grid-template-columns: repeat(4, 5fr); gap: 10px; padding: 50px; box-sizing: border-box;">
+<form action="/api/content/actions" method="get" class="action-grid">
     <!-- Render buttons based on user role -->
 
 
     <%- include('./partials/adminButtons.ejs') %>
-</div>
+</form>
