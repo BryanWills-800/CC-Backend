@@ -4,9 +4,16 @@
     </form>
 </div>
 
-<form action="/api/content/actions" method="get" class="action-grid">
-    <!-- Render buttons based on user role -->
+<section class="dashboard-shell">
+    <div class="dashboard-heading">
+        <h1>Team Operations</h1>
+        <p>Select a capability to exercise the current role-based backend flow.</p>
+    </div>
+
+    <form action="/api/content/actions" method="get" class="action-grid">
+        <!-- Render buttons based on user role -->
 
 
-    <%- include('./partials/adminButtons.ejs') %>
-</form>
+        <%- include('./partials/adminButtons.ejs') %>
+    </form>
+</section>
