@@ -1,0 +1,12 @@
+<section class="project-shell">
+    <div class="project-header">
+        <a href="/main">Back to dashboard</a>
+        <h2>Create project</h2>
+        <p>Create a team-scoped project through <code><%= serviceName %></code>.</p>
+    </div>
+
+    <div class="project-grid">
+        <%- include('./partials/createProjectForm', { project, errorMessage, successMessage }) %>
+        <%- include('./partials/createProjectServiceNotes', { creatorRoles, serviceName }) %>
+    </div>
+</section>

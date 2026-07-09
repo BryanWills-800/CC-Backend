@@ -1,0 +1,38 @@
+<form class="project-panel project-create-form" action="/api/content/actions" method="post">
+    <input type="hidden" name="action" value="createProject">
+
+    <div class="project-form-fields">
+        <div class="project-field project-field-compact">
+            <label for="teamId">Team ID</label>
+            <input id="teamId" name="teamId" type="text" value="<%= project.teamId %>" required>
+        </div>
+
+        <div class="project-field project-field-compact">
+            <label for="dueDate">Due date</label>
+            <input id="dueDate" name="dueDate" type="date" value="<%= project.dueDate %>">
+        </div>
+
+        <div class="project-field project-field-full">
+            <label for="name">Project name</label>
+            <input id="name" name="name" type="text" value="<%= project.name %>" maxlength="160" required>
+        </div>
+
+        <div class="project-field project-field-full">
+            <label for="description">Description</label>
+            <textarea id="description" name="description" rows="4" maxlength="3000"><%= project.description %></textarea>
+        </div>
+    </div>
+
+    <% if (typeof errorMessage !== "undefined" && errorMessage) { %>
+        <p class="project-form-message project-form-error"><%= errorMessage %></p>
+    <% } %>
+
+    <% if (typeof successMessage !== "undefined" && successMessage) { %>
+        <p class="project-form-message project-form-success"><%= successMessage %></p>
+    <% } %>
+
+    <div class="project-form-actions">
+        <a href="/main">Cancel</a>
+        <button type="submit">Create project</button>
+    </div>
+</form>
