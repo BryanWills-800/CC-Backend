@@ -29,7 +29,10 @@ app.use('/css', express.static(path.join(__dirname, 'public/css')));
 
 // View Engine
 app.set("view engine", "ejs");
-app.set("views", path.join(__dirname, "views", "mainView"));
+app.set("views", [
+    path.join(__dirname, "views", "mainView"),
+    path.join(__dirname, "views"),
+]);
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -38,13 +41,9 @@ app.use("/", uiRoutes);
 // app.use("/buttons", buttonRoutes);
 
 
-// app.get('/test', checkPermissions(permissions), (req, res) => {
-//     res.send("Test Route");
-// })
-
-
 // Start the Server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
     console.log(`Server is running on URL http://localhost:${port}`);
 });
+

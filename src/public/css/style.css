@@ -296,3 +296,150 @@ form[action="/api/content/actions"] button:focus {
 }
 
 
+
+.project-shell {
+    width: min(960px, 100% - 32px);
+    margin: 24px auto;
+}
+
+.project-header {
+    margin-bottom: 18px;
+}
+
+.project-header a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+    color: #cfe2ff;
+}
+
+.project-header h2 {
+    margin: 12px 0 6px;
+    font-size: 28px;
+    line-height: 1.2;
+}
+
+.project-header p {
+    max-width: 68ch;
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.project-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
+    align-items: start;
+    gap: 16px;
+}
+
+.project-panel {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding: 18px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(23, 29, 35, 0.82);
+    box-shadow: var(--shadow);
+}
+
+.project-form-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.project-field {
+    min-width: 0;
+}
+
+.project-field-full {
+    grid-column: 1 / -1;
+}
+
+.project-panel label,
+.project-notes h4 {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.project-panel input,
+.project-panel textarea {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--ink);
+}
+
+.project-panel textarea {
+    min-height: 112px;
+    resize: vertical;
+}
+
+.project-form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.project-form-actions a {
+    color: #cfe2ff;
+}
+
+.project-panel button {
+    min-height: 42px;
+    width: fit-content;
+    border: 0;
+    border-radius: 6px;
+    padding: 10px 16px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+}
+
+.project-notes h3,
+.project-notes h4,
+.project-notes p,
+.project-notes ul {
+    margin: 0;
+}
+
+.project-notes ul {
+    padding-left: 18px;
+}
+
+@media (max-width: 760px) {
+    .project-shell {
+        width: min(100% - 24px, 960px);
+        margin-top: 12px;
+    }
+
+    .project-grid,
+    .project-form-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .project-panel {
+        padding: 14px;
+    }
+
+    .project-form-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .project-form-actions button,
+    .project-form-actions a {
+        width: 100%;
+        text-align: center;
+    }
+}
+
+

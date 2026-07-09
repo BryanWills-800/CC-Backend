@@ -32,7 +32,7 @@ router.get(
     })
 
 router.get('/actions', actionController)
-router.post('/actions', actionController)
+router.post('/actions', verifyToken, actionController)
 
 // router.post
 

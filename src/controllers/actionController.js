@@ -1,3 +1,20 @@
+const { PROJECT_CREATOR_ROLES, createProjectService } = require("../services/createProject");
+
+const renderCreateProjectForm = (res, options = {}) => res
+    .status(options.statusCode || 200)
+    .render("projectView/createProject", {
+        serviceName: "createProjectService",
+        creatorRoles: PROJECT_CREATOR_ROLES,
+        project: options.project || {
+            teamId: "",
+            name: "",
+            description: "",
+            dueDate: "",
+        },
+        errorMessage: options.errorMessage || null,
+        successMessage: options.successMessage || null,
+    });
+
 const actionController = async (req, res) => {
     const action = (req.body && req.body.action) || (req.query && req.query.action);
 
@@ -17,8 +34,38 @@ const actionController = async (req, res) => {
         case "inviteMembers":
             return res.send("Invite Members action selected");
 
-        case "createProject":
-            return res.send("Create Project action selected");
+        case "createProject": {
+            const body = req.body || {};
+            const project = {
+                teamId: body.teamId || "",
+                name: body.name || "",
+                description: body.description || "",
+                dueDate: body.dueDate || "",
+            };
+
+            if (req.method !== "POST" || !project.name) {
+                return renderCreateProjectForm(res, { project });
+            }
+
+            try {
+                const createdProject = await createProjectService({
+                    ...project,
+                    userId: req.user && req.user.userId,
+                    ipAddress: req.ip,
+                });
+
+                return renderCreateProjectForm(res, {
+                    statusCode: 201,
+                    successMessage: `Project "${createdProject.name}" created successfully.`,
+                });
+            } catch (error) {
+                return renderCreateProjectForm(res, {
+                    statusCode: error.statusCode || 500,
+                    project,
+                    errorMessage: error.message,
+                });
+            }
+        }
 
         case "editProject":
             return res.send("Edit Project action selected");
@@ -44,3 +91,6 @@ const actionController = async (req, res) => {
 }
 
 module.exports = { actionController };
+
+
+
