@@ -1,96 +1,62 @@
-const { PROJECT_CREATOR_ROLES, createProjectService } = require("../services/createProject");
-
-const renderCreateProjectForm = (res, options = {}) => res
-    .status(options.statusCode || 200)
-    .render("projectView/createProject", {
-        serviceName: "createProjectService",
-        creatorRoles: PROJECT_CREATOR_ROLES,
-        project: options.project || {
-            teamId: "",
-            name: "",
-            description: "",
-            dueDate: "",
-        },
-        errorMessage: options.errorMessage || null,
-        successMessage: options.successMessage || null,
-    });
+const {
+    renderAssignTask,
+    renderChangeRoles,
+    renderComment,
+    renderCreateProject,
+    renderCreateTask,
+    renderDeleteProject,
+    renderDeleteTask,
+    renderEditProject,
+    renderInviteMembers,
+    renderUnknownAction,
+    renderUpdateAssignedTask,
+    renderUpdateProject,
+    renderViewTasks,
+} = require("../helpers/actionRenderers");
 
 const actionController = async (req, res) => {
     const action = (req.body && req.body.action) || (req.query && req.query.action);
 
     switch (action) {
         case "viewTasks":
-            return res.send("View Tasks action selected");
+            return renderViewTasks(req, res);
 
         case "comment":
-            return res.send("Comment action selected");
+            return renderComment(req, res);
 
         case "createTask":
-            return res.send("Create Task action selected");
+            return renderCreateTask(req, res);
 
         case "updateAssignedTask":
-            return res.send("Update Assigned Task action selected");
+            return renderUpdateAssignedTask(req, res);
 
         case "inviteMembers":
-            return res.send("Invite Members action selected");
+            return renderInviteMembers(req, res);
 
-        case "createProject": {
-            const body = req.body || {};
-            const project = {
-                teamId: body.teamId || "",
-                name: body.name || "",
-                description: body.description || "",
-                dueDate: body.dueDate || "",
-            };
-
-            if (req.method !== "POST" || !project.name) {
-                return renderCreateProjectForm(res, { project });
-            }
-
-            try {
-                const createdProject = await createProjectService({
-                    ...project,
-                    userId: req.user && req.user.userId,
-                    ipAddress: req.ip,
-                });
-
-                return renderCreateProjectForm(res, {
-                    statusCode: 201,
-                    successMessage: `Project "${createdProject.name}" created successfully.`,
-                });
-            } catch (error) {
-                return renderCreateProjectForm(res, {
-                    statusCode: error.statusCode || 500,
-                    project,
-                    errorMessage: error.message,
-                });
-            }
-        }
+        case "createProject":
+            return renderCreateProject(req, res);
 
         case "editProject":
-            return res.send("Edit Project action selected");
+            return renderEditProject(req, res);
 
         case "updateProject":
-            return res.send("Update Project action selected");
+            return renderUpdateProject(req, res);
 
         case "deleteProject":
-            return res.send("Delete Project action selected");
+            return renderDeleteProject(req, res);
 
         case "assignTask":
-            return res.send("Assign Task action selected");
+            return renderAssignTask(req, res);
 
         case "deleteTask":
-            return res.send("Delete Task action selected");
+            return renderDeleteTask(req, res);
 
         case "changeRoles":
-            return res.send("Change Roles action selected");
+            return renderChangeRoles(req, res);
 
         default:
-            return res.status(400).send("Unknown action");
+            return renderUnknownAction(res);
     }
 }
 
 module.exports = { actionController };
-
-
-
