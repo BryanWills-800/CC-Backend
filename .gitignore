@@ -1,0 +1,7 @@
+node_modules
+.env
+.vscode
+.agents
+# backend/src/tests
+action-create-project-audit.md
+audit-reports/

@@ -233,7 +233,7 @@ describe("auth flow", () => {
             .send({ password: "current-password", name: "New" });
 
         expect(response.status).toBe(401);
-        expect(response.body).toEqual({ message: "Unauthorized: No token provided" });
+        expect(response.body).toEqual({ message: "Authentication required" });
         expect(User.findById).not.toHaveBeenCalled();
     });
 
@@ -244,7 +244,7 @@ describe("auth flow", () => {
             .send({ password: "current-password" });
 
         expect(response.status).toBe(401);
-        expect(response.body).toEqual({ message: "Unauthorized: Invalid token" });
+        expect(response.body).toEqual({ message: "Invalid or expired token" });
         expect(User.findById).not.toHaveBeenCalled();
     });
     test("delete uses JWT user id, validates password, deletes user, and clears cookie", async () => {
@@ -266,3 +266,7 @@ describe("auth flow", () => {
         expect(response.headers["set-cookie"][0]).toContain("token=;");
     });
 });
+
+
+
+

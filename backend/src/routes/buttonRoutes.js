@@ -1,3 +1,5 @@
+// This is Legacy code.
+
 const express = require("express");
 const {
     createProjectController,
@@ -15,6 +17,8 @@ const {
 } = require("../controllers/buttonController");
 const verifyToken = require("../middlewares/authMiddleware");
 const router = express.Router();
+
+// Legacy button architecture. This router is currently not mounted in index.js.
 
 // router.get("/", (req, res) => { res.redirect("/home") })
 // router.get("/home", homeController);

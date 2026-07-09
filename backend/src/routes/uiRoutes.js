@@ -3,7 +3,7 @@ const { homeController, loginController, signupController, mainController } = re
 const verifyToken = require("../middlewares/authMiddleware");
 const router = express.Router();
 
-router.get("/", (req, res) => { res.redirect("/home") })
+router.get("/", (req, res) => { res.redirect("/home") });
 router.get("/home", homeController);
 router.get("/login", loginController);
 router.get("/signup", signupController);

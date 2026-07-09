@@ -1,45 +1,47 @@
+const { actionRenderers } = require("../helpers/actionRenderers");
+
 const actionController = async (req, res) => {
     const action = (req.body && req.body.action) || (req.query && req.query.action);
 
     switch (action) {
         case "viewTasks":
-            return res.send("View Tasks action selected");
+            return actionRenderers.renderViewTasks(req, res);
 
         case "comment":
-            return res.send("Comment action selected");
+            return actionRenderers.renderComment(req, res);
 
         case "createTask":
-            return res.send("Create Task action selected");
+            return actionRenderers.renderCreateTask(req, res);
 
         case "updateAssignedTask":
-            return res.send("Update Assigned Task action selected");
+            return actionRenderers.renderUpdateAssignedTask(req, res);
 
         case "inviteMembers":
-            return res.send("Invite Members action selected");
+            return actionRenderers.renderInviteMembers(req, res);
 
         case "createProject":
-            return res.send("Create Project action selected");
+            return actionRenderers.renderCreateProject(req, res);
 
         case "editProject":
-            return res.send("Edit Project action selected");
+            return actionRenderers.renderEditProject(req, res);
 
         case "updateProject":
-            return res.send("Update Project action selected");
+            return actionRenderers.renderUpdateProject(req, res);
 
         case "deleteProject":
-            return res.send("Delete Project action selected");
+            return actionRenderers.renderDeleteProject(req, res);
 
         case "assignTask":
-            return res.send("Assign Task action selected");
+            return actionRenderers.renderAssignTask(req, res);
 
         case "deleteTask":
-            return res.send("Delete Task action selected");
+            return actionRenderers.renderDeleteTask(req, res);
 
         case "changeRoles":
-            return res.send("Change Roles action selected");
+            return actionRenderers.renderChangeRoles(req, res);
 
         default:
-            return res.status(400).send("Unknown action");
+            return actionRenderers.renderUnknownAction(res);
     }
 }
 

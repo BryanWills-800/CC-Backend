@@ -1,3 +1,4 @@
+// Legacy button architecture. The active dashboard action flow uses actionController.
 const createProjectController = (req, res) => {
     res.render('createProject')
 }

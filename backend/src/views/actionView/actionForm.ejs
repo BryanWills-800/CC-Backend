@@ -1,0 +1,57 @@
+<section class="project-shell action-shell">
+    <div class="project-header">
+        <a href="/main">Back to dashboard</a>
+        <p class="action-eyebrow"><%= eyebrow %></p>
+        <h2><%= title %></h2>
+        <p><%= description %></p>
+    </div>
+
+    <div class="project-grid action-grid-form">
+        <form class="project-panel project-create-form action-form" action="/api/content/actions" method="post">
+            <input type="hidden" name="action" value="<%= action %>">
+
+            <div class="project-form-fields">
+                <% fields.forEach((field) => { %>
+                    <div class="project-field <%= field.full ? "project-field-full" : "" %> <%= field.compact ? "project-field-compact" : "" %>">
+                        <label for="<%= field.name %>"><%= field.label %></label>
+
+                        <% if (field.type === "textarea") { %>
+                            <textarea id="<%= field.name %>" name="<%= field.name %>" rows="4" <%= field.maxLength ? `maxlength=${field.maxLength}` : "" %> <%= field.required ? "required" : "" %>><%= values[field.name] || "" %></textarea>
+                        <% } else if (field.type === "select") { %>
+                            <select id="<%= field.name %>" name="<%= field.name %>" <%= field.required ? "required" : "" %>>
+                                <option value="">Select <%= field.label.toLowerCase() %></option>
+                                <% field.options.forEach((option) => { %>
+                                    <option value="<%= option %>" <%= values[field.name] === option ? "selected" : "" %>><%= option %></option>
+                                <% }) %>
+                            </select>
+                        <% } else { %>
+                            <input id="<%= field.name %>" name="<%= field.name %>" type="<%= field.type || "text" %>" value="<%= values[field.name] || "" %>" <%= field.maxLength ? `maxlength=${field.maxLength}` : "" %> <%= field.required ? "required" : "" %>>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </div>
+
+            <% if (errorMessage) { %>
+                <p class="project-form-message project-form-error"><%= errorMessage %></p>
+            <% } %>
+
+            <% if (successMessage) { %>
+                <p class="project-form-message project-form-success"><%= successMessage %></p>
+            <% } %>
+
+            <div class="project-form-actions">
+                <a href="/main">Cancel</a>
+                <button type="submit"><%= submitLabel %></button>
+            </div>
+        </form>
+
+        <aside class="project-panel project-notes action-notes">
+            <h3><%= notesTitle %></h3>
+            <ul>
+                <% notes.forEach((note) => { %>
+                    <li><%= note %></li>
+                <% }) %>
+            </ul>
+        </aside>
+    </div>
+</section>

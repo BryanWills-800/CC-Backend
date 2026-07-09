@@ -1,3 +1,5 @@
+const { resolveMainRole } = require("../utils/roles");
+
 const homeController = (req, res) => {
     res.render("home");
 }
@@ -23,9 +25,11 @@ const deleteController = (req, res) => {
 }
 
 const mainController = (req, res) => {
-    res.render("main");
-}
+    const requestedRole = req.user && req.user.role ? req.user.role : process.env.ROLE;
+    const role = resolveMainRole(requestedRole);
 
+    res.render("main", { role });
+}
 module.exports = {
     homeController,
     loginController,
@@ -35,3 +39,8 @@ module.exports = {
     deleteController,
     mainController
 };
+
+
+
+
+
