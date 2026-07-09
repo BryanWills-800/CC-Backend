@@ -1,61 +1,47 @@
-const {
-    renderAssignTask,
-    renderChangeRoles,
-    renderComment,
-    renderCreateProject,
-    renderCreateTask,
-    renderDeleteProject,
-    renderDeleteTask,
-    renderEditProject,
-    renderInviteMembers,
-    renderUnknownAction,
-    renderUpdateAssignedTask,
-    renderUpdateProject,
-    renderViewTasks,
-} = require("../helpers/actionRenderers");
+const { actionRenderers } = require("../helpers/actionRenderers");
 
 const actionController = async (req, res) => {
     const action = (req.body && req.body.action) || (req.query && req.query.action);
 
     switch (action) {
         case "viewTasks":
-            return renderViewTasks(req, res);
+            return actionRenderers.renderViewTasks(req, res);
 
         case "comment":
-            return renderComment(req, res);
+            return actionRenderers.renderComment(req, res);
 
         case "createTask":
-            return renderCreateTask(req, res);
+            return actionRenderers.renderCreateTask(req, res);
 
         case "updateAssignedTask":
-            return renderUpdateAssignedTask(req, res);
+            return actionRenderers.renderUpdateAssignedTask(req, res);
 
         case "inviteMembers":
-            return renderInviteMembers(req, res);
+            return actionRenderers.renderInviteMembers(req, res);
 
         case "createProject":
-            return renderCreateProject(req, res);
+            return actionRenderers.renderCreateProject(req, res);
 
         case "editProject":
-            return renderEditProject(req, res);
+            return actionRenderers.renderEditProject(req, res);
 
         case "updateProject":
-            return renderUpdateProject(req, res);
+            return actionRenderers.renderUpdateProject(req, res);
 
         case "deleteProject":
-            return renderDeleteProject(req, res);
+            return actionRenderers.renderDeleteProject(req, res);
 
         case "assignTask":
-            return renderAssignTask(req, res);
+            return actionRenderers.renderAssignTask(req, res);
 
         case "deleteTask":
-            return renderDeleteTask(req, res);
+            return actionRenderers.renderDeleteTask(req, res);
 
         case "changeRoles":
-            return renderChangeRoles(req, res);
+            return actionRenderers.renderChangeRoles(req, res);
 
         default:
-            return renderUnknownAction(res);
+            return actionRenderers.renderUnknownAction(res);
     }
 }
 

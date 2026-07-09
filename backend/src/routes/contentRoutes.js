@@ -31,7 +31,7 @@ router.get(
         res.send("User Content");
     })
 
-router.get('/actions', actionController)
+router.get('/actions', verifyToken, actionController)
 router.post('/actions', verifyToken, actionController)
 
 // router.post

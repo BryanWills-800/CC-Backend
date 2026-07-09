@@ -366,6 +366,7 @@ form[action="/api/content/actions"] button:focus {
 }
 
 .project-panel input,
+.project-panel select,
 .project-panel textarea {
     width: 100%;
     min-width: 0;
@@ -443,3 +444,44 @@ form[action="/api/content/actions"] button:focus {
 }
 
 
+
+.action-eyebrow {
+    margin: 0 0 4px;
+    color: var(--accent-2);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.action-grid-form .project-panel button {
+    background: var(--accent);
+    color: #fff;
+    text-align: center;
+}
+
+.project-form-message {
+    margin: 0;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+.project-form-error {
+    border: 1px solid rgba(214, 69, 69, 0.35);
+    background: rgba(214, 69, 69, 0.14);
+    color: #ffd8d8;
+}
+
+.project-form-success {
+    border: 1px solid rgba(22, 160, 133, 0.35);
+    background: rgba(22, 160, 133, 0.14);
+    color: #d8fff6;
+}
+
+.project-panel select:focus,
+.project-panel input:focus,
+.project-panel textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(47, 128, 237, 0.24);
+    outline: none;
+}

@@ -1,12 +1,16 @@
-const { describe, beforeEach, test } = require("node:test");
+const nodeTest = typeof global.describe === "function" ? null : require("node:test");
+const describeFn = global.describe || nodeTest.describe;
+const beforeEachFn = global.beforeEach || nodeTest.beforeEach;
+const testFn = global.test || nodeTest.test;
 const assert = require("node:assert/strict");
 
+const { createProject } = require("../services/createProject");
 const {
     buildProjectPayload,
-    createProjectService,
     normalizeProjectInput,
     validateProjectInput,
-} = require("../services/createProject");
+} = createProject.helpers;
+const { createProjectService } = createProject.services;
 
 const createMockFn = () => {
     const mockFn = async (...args) => {
@@ -34,14 +38,14 @@ const createDeps = () => ({
     ActivityLog: { create: createMockFn() },
 });
 
-describe("createProject service", () => {
+describeFn("createProject service", () => {
     let deps;
 
-    beforeEach(() => {
+    beforeEachFn(() => {
         deps = createDeps();
     });
 
-    test("normalizes supported project input aliases", () => {
+    testFn("normalizes supported project input aliases", () => {
         assert.deepEqual(normalizeProjectInput({
             team: "team-1",
             createdBy: "user-1",
@@ -56,14 +60,14 @@ describe("createProject service", () => {
         });
     });
 
-    test("validates required project fields", () => {
+    testFn("validates required project fields", () => {
         assert.throws(
             () => validateProjectInput({ teamId: "team-1", userId: "user-1", name: "" }),
             /Project name is required/
         );
     });
 
-    test("builds a model-ready project payload", () => {
+    testFn("builds a model-ready project payload", () => {
         assert.deepEqual(buildProjectPayload({
             teamId: "team-1",
             userId: "user-1",
@@ -80,7 +84,7 @@ describe("createProject service", () => {
         });
     });
 
-    test("creates a project and logs activity for owners", async () => {
+    testFn("creates a project and logs activity for owners", async () => {
         const project = { _id: "project-1", name: "Build API" };
         deps.Team.findById.mockResolvedValue({ _id: "team-1", isArchived: false });
         deps.TeamMembership.findOne.mockResolvedValue({ role: "owner" });
@@ -91,7 +95,9 @@ describe("createProject service", () => {
             teamId: "team-1",
             userId: "user-1",
             name: "Build API",
-            ipAddress: "127.0.0.1",
+            auditContext: {
+                ipAddress: "127.0.0.1",
+            },
         }, deps);
 
         assert.equal(result, project);
@@ -116,7 +122,7 @@ describe("createProject service", () => {
         }]]);
     });
 
-    test("rejects non-maintainer project creation", async () => {
+    testFn("rejects non-maintainer project creation", async () => {
         deps.Team.findById.mockResolvedValue({ _id: "team-1", isArchived: false });
         deps.TeamMembership.findOne.mockResolvedValue({ role: "viewer" });
 

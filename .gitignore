@@ -3,3 +3,5 @@ node_modules
 .vscode
 .agents
 # backend/src/tests
+action-create-project-audit.md
+audit-reports/

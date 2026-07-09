@@ -4,6 +4,7 @@ const path = require("path");
 const testsDir = __dirname;
 const expectedTestFiles = [
     "actionController.test.js",
+    "actionMessageServices.test.js",
     "auth.test.js",
     "createProject.test.js",
     "dbConnect.test.js",

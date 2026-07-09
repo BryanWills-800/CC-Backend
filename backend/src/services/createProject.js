@@ -55,7 +55,7 @@ const buildProjectPayload = (input) => ({
     dueDate: input.dueDate,
 });
 
-const logProjectCreated = async ({ project, input, ipAddress }, deps) => {
+const logProjectCreated = async ({ project, input, auditContext }, deps) => {
     if (!deps.ActivityLog) return null;
 
     return deps.ActivityLog.create({
@@ -65,7 +65,7 @@ const logProjectCreated = async ({ project, input, ipAddress }, deps) => {
         entityType: "project",
         entityId: project._id,
         metadata: { name: project.name },
-        ipAddress: ipAddress || null,
+        ipAddress: auditContext && auditContext.ipAddress ? auditContext.ipAddress : null,
     });
 }
 
@@ -76,7 +76,7 @@ const createProjectService = async (input, deps = defaultDeps) => {
     await assertCanCreateProject(projectInput, deps);
 
     const project = await deps.Project.create(buildProjectPayload(projectInput));
-    await logProjectCreated({ project, input: projectInput, ipAddress: input && input.ipAddress }, deps);
+    await logProjectCreated({ project, input: projectInput, auditContext: input && input.auditContext }, deps);
 
     return project;
 }
@@ -88,11 +88,20 @@ const defaultDeps = {
     ActivityLog,
 };
 
-module.exports = {
-    PROJECT_CREATOR_ROLES,
-    buildProjectPayload,
-    createProjectError,
-    createProjectService,
-    normalizeProjectInput,
-    validateProjectInput,
+const createProject = {
+    meta: {
+        DEFAULT_PROJECT_STATUS,
+        PROJECT_CREATOR_ROLES,
+    },
+    helpers: {
+        buildProjectPayload,
+        createProjectError,
+        normalizeProjectInput,
+        validateProjectInput,
+    },
+    services: {
+        createProjectService,
+    },
 };
+
+module.exports = { createProject };

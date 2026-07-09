@@ -1,13 +1,36 @@
 jest.mock("../services/createProject", () => ({
-    PROJECT_CREATOR_ROLES: ["owner", "maintainer"],
-    createProjectService: jest.fn(),
+    createProject: {
+        meta: {
+            PROJECT_CREATOR_ROLES: ["owner", "maintainer"],
+        },
+        services: {
+            createProjectService: jest.fn(),
+        },
+    },
+}));
+
+jest.mock("../services/actionMessageServices", () => ({
+    actionMessageServices: {
+        assignTask: jest.fn(),
+        changeRoles: jest.fn(),
+        comment: jest.fn(),
+        createTask: jest.fn(),
+        deleteProject: jest.fn(),
+        deleteTask: jest.fn(),
+        editProject: jest.fn(),
+        inviteMembers: jest.fn(),
+        updateAssignedTask: jest.fn(),
+        updateProject: jest.fn(),
+        viewTasks: jest.fn(),
+    },
 }));
 
 const express = require("express");
 const path = require("path");
 const request = require("supertest");
 const { actionController } = require("../controllers/actionController");
-const { createProjectService } = require("../services/createProject");
+const { createProject } = require("../services/createProject");
+const { actionMessageServices } = require("../services/actionMessageServices");
 
 const createApp = () => {
     const app = express();
@@ -18,47 +41,59 @@ const createApp = () => {
     ]);
     app.use(express.urlencoded({ extended: true }));
     app.use(express.json());
-    app.get("/actions", actionController);
     app.use((req, res, next) => {
         req.user = { userId: "user-1" };
         next();
     });
+    app.get("/actions", actionController);
     app.post("/actions", actionController);
     return app;
 };
 
+const actionCases = [
+    ["viewTasks", "viewTasks", "View tasks"],
+    ["comment", "comment", "Create comment"],
+    ["createTask", "createTask", "Create task"],
+    ["updateAssignedTask", "updateAssignedTask", "Update assigned task"],
+    ["inviteMembers", "inviteMembers", "Invite member"],
+    ["editProject", "editProject", "Load project for editing"],
+    ["updateProject", "updateProject", "Update project"],
+    ["deleteProject", "deleteProject", "Delete project"],
+    ["assignTask", "assignTask", "Assign task"],
+    ["deleteTask", "deleteTask", "Delete task"],
+    ["changeRoles", "changeRoles", "Change team role"],
+];
+
 describe("actionController", () => {
     beforeEach(() => {
         jest.clearAllMocks();
+        Object.values(actionMessageServices).forEach((service) => {
+            service.mockResolvedValue({ message: "Action completed successfully." });
+        });
     });
-    const cases = [
-        ["viewTasks", "View Tasks action selected"],
-        ["comment", "Comment action selected"],
-        ["createTask", "Create Task action selected"],
-        ["updateAssignedTask", "Update Assigned Task action selected"],
-        ["inviteMembers", "Invite Members action selected"],
-        ["editProject", "Edit Project action selected"],
-        ["updateProject", "Update Project action selected"],
-        ["deleteProject", "Delete Project action selected"],
-        ["assignTask", "Assign Task action selected"],
-        ["deleteTask", "Delete Task action selected"],
-        ["changeRoles", "Change Roles action selected"],
-    ];
 
-    test.each(cases)("handles %s from form body", async (action, expectedText) => {
+    test.each(actionCases)("renders %s action form", async (action, _serviceName, expectedTitle) => {
+        const response = await request(createApp()).get(`/actions?action=${action}`);
+
+        expect(response.status).toBe(200);
+        expect(response.text).toContain(expectedTitle);
+        expect(response.text).toContain(`value=\"${action}\"`);
+    });
+
+    test.each(actionCases)("submits %s through its action service", async (action, serviceName) => {
         const response = await request(createApp())
             .post("/actions")
             .send(`action=${action}`);
 
         expect(response.status).toBe(200);
-        expect(response.text).toBe(expectedText);
-    });
-
-    test.each(cases)("handles %s from query string", async (action, expectedText) => {
-        const response = await request(createApp()).get(`/actions?action=${action}`);
-
-        expect(response.status).toBe(200);
-        expect(response.text).toBe(expectedText);
+        expect(response.text).toContain("Action completed successfully.");
+        expect(actionMessageServices[serviceName]).toHaveBeenCalledWith(expect.objectContaining({
+            action,
+            userId: "user-1",
+            auditContext: {
+                ipAddress: expect.any(String),
+            },
+        }));
     });
 
     test("renders create project form", async () => {
@@ -72,7 +107,7 @@ describe("actionController", () => {
     });
 
     test("submits create project form through service", async () => {
-        createProjectService.mockResolvedValue({ name: "Real Project" });
+        createProject.services.createProjectService.mockResolvedValue({ name: "Real Project" });
 
         const response = await request(createApp())
             .post("/actions")
@@ -80,18 +115,20 @@ describe("actionController", () => {
 
         expect(response.status).toBe(201);
         expect(response.text).toContain("Project &#34;Real Project&#34; created successfully.");
-        expect(createProjectService).toHaveBeenCalledWith({
+        expect(createProject.services.createProjectService).toHaveBeenCalledWith(expect.objectContaining({
             teamId: "team-1",
             name: "Real Project",
             description: "Live",
             dueDate: "2026-08-01",
             userId: "user-1",
-            ipAddress: expect.any(String),
-        });
+            auditContext: {
+                ipAddress: expect.any(String),
+            },
+        }));
     });
 
     test("rerenders create project form with service errors", async () => {
-        createProjectService.mockRejectedValue(Object.assign(new Error("Team not found"), { statusCode: 404 }));
+        createProject.services.createProjectService.mockRejectedValue(Object.assign(new Error("Team not found"), { statusCode: 404 }));
 
         const response = await request(createApp())
             .post("/actions")
@@ -118,7 +155,3 @@ describe("actionController", () => {
         expect(response.text).toBe("Unknown action");
     });
 });
-
-
-
-
