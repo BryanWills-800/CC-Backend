@@ -71,6 +71,7 @@ describe("auth flow", () => {
             name: "Bryan",
             email: "bryan@example.com",
             passwordHash: "hashed-password",
+            role: "viewer",
         });
         expect(User.mockSave).toHaveBeenCalled();
     });
@@ -108,6 +109,7 @@ describe("auth flow", () => {
             name: "Bryan",
             email: "bryan@example.com",
             avatarUrl: null,
+            role: "maintainer",
             passwordHash: "hash",
             save: jest.fn().mockResolvedValue(undefined),
         };
@@ -125,6 +127,8 @@ describe("auth flow", () => {
         expect(cookie).toContain("HttpOnly");
         expect(cookie).toContain("SameSite=Strict");
         expect(cookie).not.toContain("Secure");
+        const token = cookie.match(/token=([^;]+)/)[1];
+        expect(jwt.verify(token, process.env.JWT_SECRET)).toMatchObject({ role: "maintainer" });
     });
 
     test("production login cookie includes Secure", async () => {

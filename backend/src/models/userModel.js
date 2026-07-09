@@ -30,6 +30,12 @@ const userSchema = new mongoose.Schema(
       enum: ["local", "google"],
       default: "local",
     },
+    role: {
+      type: String,
+      enum: ["admin", "maintainer", "member", "viewer"],
+      default: "viewer",
+      index: true,
+    },
     isActive: {
       type: Boolean,
       default: false,

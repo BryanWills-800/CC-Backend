@@ -31,6 +31,7 @@ const signup = async (req, res) => {
             name: name,
             email: email,
             passwordHash: hash,
+            role: "viewer",
         })
         await newUser.save()
         res
@@ -71,6 +72,7 @@ const login = async (req, res) => {
             name: user.name,
             email: user.email,
             avatarUrl: user.avatarUrl,
+            role: user.role || "viewer",
         }
 
         const token = jwt.sign(
