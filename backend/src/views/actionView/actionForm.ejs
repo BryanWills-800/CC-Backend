@@ -21,7 +21,9 @@
                             <select id="<%= field.name %>" name="<%= field.name %>" <%= field.required ? "required" : "" %>>
                                 <option value="">Select <%= field.label.toLowerCase() %></option>
                                 <% field.options.forEach((option) => { %>
-                                    <option value="<%= option %>" <%= values[field.name] === option ? "selected" : "" %>><%= option %></option>
+                                    <% const optionValue = typeof option === "object" ? option.value : option; %>
+                                    <% const optionLabel = typeof option === "object" ? option.label : option; %>
+                                    <option value="<%= optionValue %>" <%= String(values[field.name] || "") === String(optionValue || "") ? "selected" : "" %>><%= optionLabel %></option>
                                 <% }) %>
                             </select>
                         <% } else { %>
