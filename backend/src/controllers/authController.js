@@ -73,7 +73,7 @@ const login = async (req, res) => {
             avatarUrl: user.avatarUrl,
         }
 
-        const token = jwt.sign(
+        const loginToken = jwt.sign(
             payload,
             process.env.JWT_SECRET,
             { expiresIn: "1h" }
@@ -83,9 +83,9 @@ const login = async (req, res) => {
         user.lastLoginAt = Date.now();
         await user.save();
 
-        res.cookie("token", token, loginCookieOptions())
+        res.cookie("loginToken", loginToken, loginCookieOptions())
             .status(200)
-            .redirect("/main");
+            .redirect("/team-select");
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -133,11 +133,11 @@ const update = async (req, res) => {
 
 const logout = async (req, res) => {
     try {
-        const token = req.cookies && req.cookies.token;
+        const loginToken = req.cookies && req.cookies.loginToken;
 
-        if (token) {
+        if (loginToken) {
             try {
-                const decodedPayload = jwt.verify(token, process.env.JWT_SECRET);
+                const decodedPayload = jwt.verify(loginToken, process.env.JWT_SECRET);
                 const { userId } = decodedPayload;
 
                 await User.findByIdAndUpdate(userId, {
@@ -149,7 +149,8 @@ const logout = async (req, res) => {
             }
         }
 
-        res.clearCookie("token", authCookieOptions());
+        res.clearCookie("loginToken", authCookieOptions());
+        res.clearCookie("roleToken", authCookieOptions());
 
         res
             .status(200)
@@ -182,7 +183,8 @@ const deleteUser = async (req, res) => {
 
         await User.findByIdAndDelete(userId)
 
-        res.clearCookie("token", authCookieOptions());
+        res.clearCookie("loginToken", authCookieOptions());
+        res.clearCookie("roleToken", authCookieOptions());
 
         res
             .status(200)
@@ -195,5 +197,8 @@ const deleteUser = async (req, res) => {
 }
 
 module.exports = { signup, login, update, logout, deleteUser };
+
+
+
 
 

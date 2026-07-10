@@ -1,0 +1,58 @@
+<section class="team-select-shell">
+    <div class="team-select-header">
+        <div class="brand-block team-select-brand">
+            <div class="brand-mark">MP</div>
+            <div>
+                <p class="brand-title">MIDNIGHT</p>
+                <p class="brand-subtitle">Team Context</p>
+            </div>
+        </div>
+
+        <form action="/api/auth/logout" method="post" class="team-select-logout">
+            <button type="submit">Logout</button>
+        </form>
+    </div>
+
+    <section class="team-select-main glass-panel lithic-border">
+        <div class="team-select-copy">
+            <p class="mono-kicker">Workspace Selection</p>
+            <h1>Which team are you working on?</h1>
+            <p>Choose one team context before opening the action console. Your dashboard role will come from that team membership.</p>
+        </div>
+
+        <% if (error) { %>
+            <div class="form-alert"><%= error %></div>
+        <% } %>
+
+        <% if (!teams.length) { %>
+            <div class="empty-team-state">
+                <strong>No team memberships found</strong>
+                <p>Your account is valid, but it is not attached to an active team yet.</p>
+            </div>
+        <% } else { %>
+            <form action="/team-select" method="post" class="team-choice-grid">
+                <% teams.forEach((team, index) => { %>
+                    <button class="team-choice-card team-choice-card--<%= team.role %>" type="submit" name="teamId" value="<%= team.id %>">
+                        <span class="command-index"><%= String(index + 1).padStart(2, '0') %></span>
+                        <span class="team-choice-content">
+                            <strong><%= team.name %></strong>
+                            <small><%= team.description %></small>
+                        </span>
+                        <span class="team-role-chip team-role-chip--<%= team.role %>"><%= team.role %></span>
+                    </button>
+                <% }) %>
+            </form>
+        <% } %>
+
+        <!-- Entry point for the create-team action flow. -->
+        <div class="team-select-actions">
+            <a class="team-create-placeholder" href="/api/content/actions?action=createTeam">
+                <span class="team-create-plus" aria-hidden="true">+</span>
+                <span>Create new team</span>
+            </a>
+        </div>
+    </section>
+</section>
+
+
+

@@ -1,20 +1,32 @@
 <%- include("memberButtons") %>
 
-    <!-- Maintainer additions -->
-
-    <button name="action" value="inviteMembers"
-        style="padding: 10px; border: none; border-radius: 5px; max-width: 250px;">Invite
-        Members</button>
-    <button name="action" value="createProject"
-        style="padding: 10px; border: none; border-radius: 5px; max-width: 250px;">Create
-        Project</button>
-    <button name="action" value="editProject"
-        style="padding: 10px; border: none; border-radius: 5px; max-width: 250px;">Edit
-        Project</button>
-    <button name="action" value="deleteProject"
-        style="padding: 10px; border: none; border-radius: 5px; max-width: 250px;">Delete Project</button>
-
-    <button name="action" value="assignTask"
-        style="padding: 10px; border: none; border-radius: 5px; max-width: 250px;">Assign Task</button>
-    <button name="action" value="deleteTask"
-        style="padding: 10px; border: none; border-radius: 5px; max-width: 250px;">Delete Task</button>
+<button class="command-action" name="action" value="inviteMembers">
+    <span class="command-index">JOIN</span>
+    <strong>Invite Members</strong>
+    <small>Create team invitations with scoped roles.</small>
+</button>
+<button class="command-action" name="action" value="createProject">
+    <span class="command-index">PROJ</span>
+    <strong>Create Project</strong>
+    <small>Provision a team-scoped project record.</small>
+</button>
+<button class="command-action" name="action" value="editProject">
+    <span class="command-index">EDIT</span>
+    <strong>Edit Project</strong>
+    <small>Load project metadata for review.</small>
+</button>
+<button class="command-action" name="action" value="deleteProject">
+    <span class="command-index">ARCH</span>
+    <strong>Delete Project</strong>
+    <small>Archive a project through service rules.</small>
+</button>
+<button class="command-action" name="action" value="assignTask">
+    <span class="command-index">ASGN</span>
+    <strong>Assign Task</strong>
+    <small>Attach an operator to a task.</small>
+</button>
+<button class="command-action" name="action" value="deleteTask">
+    <span class="command-index">DROP</span>
+    <strong>Delete Task</strong>
+    <small>Soft-delete a task with audit logging.</small>
+</button>

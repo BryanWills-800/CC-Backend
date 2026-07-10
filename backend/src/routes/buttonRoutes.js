@@ -15,7 +15,7 @@ const {
     assignTaskController,
     deleteTaskController
 } = require("../controllers/buttonController");
-const verifyToken = require("../middlewares/authMiddleware");
+const { authenticateUser, authorizeUserRole } = require("../middlewares/authMiddleware");
 const router = express.Router();
 
 // Legacy button architecture. This router is currently not mounted in index.js.
@@ -24,20 +24,21 @@ const router = express.Router();
 // router.get("/home", homeController);
 // router.get("/login", loginController);
 // router.get("/signup", signupController);
-// router.get('/main', verifyToken, mainController)
+// router.get('/main', authenticateUser, authorizeUserRole, mainController)
 
-router.post('/createProject', verifyToken, createProjectController)
-router.post('/updateProject', verifyToken, updateProjectController)
-router.post('/deleteProject', verifyToken, deleteProjectController)
-router.post('/changeRoles', verifyToken, changeRolesController)
-router.post('/viewTasks', verifyToken, viewTasksController)
-router.post('/comment', verifyToken, commentController)
-router.post('/createTask', verifyToken, createTaskController)
-router.post('/updateAssignedTask', verifyToken, updateAssignedTaskController)
-router.post('/inviteMembers', verifyToken, inviteMembersController)
-router.post('/editProject', verifyToken, editProjectController)
-router.post('/deleteProject', verifyToken, deleteProjectController)
-router.post('/assignTask', verifyToken, assignTaskController)
-router.post('/deleteTask', verifyToken, deleteTaskController)
+router.post('/createProject', authenticateUser, authorizeUserRole, createProjectController)
+router.post('/updateProject', authenticateUser, authorizeUserRole, updateProjectController)
+router.post('/deleteProject', authenticateUser, authorizeUserRole, deleteProjectController)
+router.post('/changeRoles', authenticateUser, authorizeUserRole, changeRolesController)
+router.post('/viewTasks', authenticateUser, authorizeUserRole, viewTasksController)
+router.post('/comment', authenticateUser, authorizeUserRole, commentController)
+router.post('/createTask', authenticateUser, authorizeUserRole, createTaskController)
+router.post('/updateAssignedTask', authenticateUser, authorizeUserRole, updateAssignedTaskController)
+router.post('/inviteMembers', authenticateUser, authorizeUserRole, inviteMembersController)
+router.post('/editProject', authenticateUser, authorizeUserRole, editProjectController)
+router.post('/deleteProject', authenticateUser, authorizeUserRole, deleteProjectController)
+router.post('/assignTask', authenticateUser, authorizeUserRole, assignTaskController)
+router.post('/deleteTask', authenticateUser, authorizeUserRole, deleteTaskController)
 
 module.exports = router;
+

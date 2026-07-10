@@ -41,8 +41,8 @@ const createDoc = (attrs) => {
 
 const createDeps = () => ({
     Project: { findById: createMockFn() },
-    Team: { findById: createMockFn() },
-    TeamMembership: { findOne: createMockFn() },
+    Team: { findById: createMockFn(), create: createMockFn() },
+    TeamMembership: { findOne: createMockFn(), create: createMockFn() },
     TeamInvitation: { create: createMockFn() },
     Task: { find: createMockFn(), findById: createMockFn(), create: createMockFn() },
     Comment: { create: createMockFn() },
@@ -63,6 +63,57 @@ describeFn("action message services", () => {
         allowMembership(deps);
     });
 
+
+    testFn("creates a team with owner membership and activity log", async () => {
+        deps.Team.create.mockImplementation(async (payload) => ({ _id: "team-new", ...payload }));
+        deps.TeamMembership.create.mockResolvedValue({ _id: "membership-1" });
+
+        const result = await actionMessageServices.createTeam({
+            userId: "user-1",
+            name: " Team A ",
+            description: " New workspace ",
+            auditContext: { ipAddress: "127.0.0.1" },
+        }, deps);
+
+        assert.equal(result.message, "Team \"Team A\" created successfully.");
+        assert.deepEqual(deps.Team.create.calls[0][0], {
+            name: "Team A",
+            description: "New workspace",
+            slug: "team-a",
+            createdBy: "user-1",
+        });
+        assert.deepEqual(deps.TeamMembership.create.calls[0][0], {
+            team: "team-new",
+            user: "user-1",
+            role: "owner",
+            invitedBy: null,
+        });
+        assert.equal(deps.ActivityLog.create.calls[0][0].action, "team.created");
+        assert.equal(deps.ActivityLog.create.calls[0][0].ipAddress, "127.0.0.1");
+    });
+
+    testFn("rejects create team without an authenticated user", async () => {
+        await assert.rejects(
+            () => actionMessageServices.createTeam({ name: "Team A" }, deps),
+            { statusCode: 401, message: "Authenticated user is required" }
+        );
+    });
+
+    testFn("rejects create team without a name", async () => {
+        await assert.rejects(
+            () => actionMessageServices.createTeam({ userId: "user-1", name: "   " }, deps),
+            { statusCode: 400, message: "Team name is required" }
+        );
+    });
+
+    testFn("creates a team with an optional blank description", async () => {
+        deps.Team.create.mockImplementation(async (payload) => ({ _id: "team-new", ...payload }));
+        deps.TeamMembership.create.mockResolvedValue({ _id: "membership-1" });
+
+        await actionMessageServices.createTeam({ userId: "user-1", name: "Team B" }, deps);
+
+        assert.equal(deps.Team.create.calls[0][0].description, "");
+    });
     testFn("views tasks for a team member", async () => {
         deps.Task.find.mockResolvedValue([{ title: "One" }, { title: "Two" }]);
 
@@ -214,3 +265,4 @@ describeFn("action message services", () => {
         assert.equal(deps.ActivityLog.create.calls[0][0].action, "team.member_role_updated");
     });
 });
+

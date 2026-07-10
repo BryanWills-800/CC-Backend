@@ -5,3 +5,5 @@ node_modules
 # backend/src/tests
 action-create-project-audit.md
 audit-reports/
+stitch/
+comprehensive.md

@@ -24,6 +24,10 @@ const createActionError = (statusCode, message) => {
 
 const normalizeText = (value) => typeof value === "string" ? value.trim() : "";
 const normalizeDate = (value) => value || null;
+const buildSlug = (value) => normalizeText(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 const idMatches = (left, right) => String(left) === String(right);
 
 const getAuditIpAddress = (input) => input && input.auditContext && input.auditContext.ipAddress
@@ -84,6 +88,44 @@ const logActivity = async ({ teamId, actorId, action, entityType, entityId, meta
     });
 }
 
+const normalizeCreateTeamInput = (input = {}) => ({
+    userId: input.userId || input.createdBy,
+    name: normalizeText(input.name),
+    description: normalizeText(input.description),
+    auditContext: input.auditContext,
+});
+
+const createTeamService = async (input, deps = defaultDeps) => {
+    const teamInput = normalizeCreateTeamInput(input);
+    if (!teamInput.userId) throw createActionError(401, "Authenticated user is required");
+    assertRequired(teamInput.name, "Team name is required");
+
+    const team = await deps.Team.create({
+        name: teamInput.name,
+        description: teamInput.description,
+        slug: buildSlug(teamInput.name),
+        createdBy: teamInput.userId,
+    });
+
+    await deps.TeamMembership.create({
+        team: team._id,
+        user: teamInput.userId,
+        role: "owner",
+        invitedBy: null,
+    });
+
+    await logActivity({
+        teamId: team._id,
+        actorId: teamInput.userId,
+        action: "team.created",
+        entityType: "team",
+        entityId: team._id,
+        metadata: { name: team.name, slug: team.slug },
+        ipAddress: getAuditIpAddress(teamInput),
+    }, deps);
+
+    return { message: `Team "${team.name}" created successfully.`, data: team };
+}
 const normalizeViewTasksInput = (input = {}) => ({
     teamId: input.teamId || input.team || "",
     projectId: input.projectId || input.project || "",
@@ -476,6 +518,7 @@ const actionMessageServices = {
     changeRoles: changeRolesService,
     comment: commentService,
     createTask: createTaskService,
+    createTeam: createTeamService,
     deleteProject: deleteProjectService,
     deleteTask: deleteTaskService,
     editProject: editProjectService,
@@ -486,3 +529,6 @@ const actionMessageServices = {
 };
 
 module.exports = { actionMessageServices };
+
+
+

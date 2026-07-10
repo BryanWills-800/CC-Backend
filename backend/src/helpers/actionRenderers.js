@@ -48,6 +48,18 @@ const ACTION_FORMS = {
             { name: "description", label: "Description", type: "textarea", maxLength: 3000, full: true },
         ],
     },
+    createTeam: {
+        action: "createTeam",
+        title: "Create team",
+        eyebrow: "Team action",
+        description: "Create a team workspace and make yourself the owner.",
+        submitLabel: "Create team",
+        successStatusCode: 201,
+        fields: [
+            { name: "name", label: "Team name", required: true, maxLength: 120, full: true },
+            { name: "description", label: "Description", type: "textarea", maxLength: 1000, full: true },
+        ],
+    },
     createTask: {
         action: "createTask",
         title: "Create task",
@@ -184,6 +196,7 @@ const actionRenderers = {
     renderChangeRoles: async (req, res) => renderServiceAction(req, res, "changeRoles", actionMessageServices.changeRoles),
     renderComment: async (req, res) => renderServiceAction(req, res, "comment", actionMessageServices.comment),
     renderCreateProject: async (req, res) => renderServiceAction(req, res, "createProject", projectActionServices.createProject),
+    renderCreateTeam: async (req, res) => renderServiceAction(req, res, "createTeam", actionMessageServices.createTeam),
     renderCreateTask: async (req, res) => renderServiceAction(req, res, "createTask", actionMessageServices.createTask),
     renderDeleteProject: async (req, res) => renderServiceAction(req, res, "deleteProject", actionMessageServices.deleteProject),
     renderDeleteTask: async (req, res) => renderServiceAction(req, res, "deleteTask", actionMessageServices.deleteTask),
@@ -196,3 +209,6 @@ const actionRenderers = {
 };
 
 module.exports = { actionRenderers };
+
+
+

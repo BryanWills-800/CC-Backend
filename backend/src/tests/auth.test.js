@@ -27,6 +27,7 @@ jest.mock("../models/userModel", () => {
 const bcryptjs = require("bcryptjs");
 const User = require("../models/userModel");
 const authRoutes = require("../routes/authRoutes");
+const { authenticateUser, authorizeUserRole } = require("../middlewares/authMiddleware");
 
 const createApp = () => {
     const app = express();
@@ -120,8 +121,8 @@ describe("auth flow", () => {
 
         const cookie = response.headers["set-cookie"][0];
         expect(response.status).toBe(302);
-        expect(response.headers.location).toBe("/main");
-        expect(cookie).toContain("token=");
+        expect(response.headers.location).toBe("/team-select");
+        expect(cookie).toContain("loginToken=");
         expect(cookie).toContain("HttpOnly");
         expect(cookie).toContain("SameSite=Strict");
         expect(cookie).not.toContain("Secure");
@@ -147,20 +148,21 @@ describe("auth flow", () => {
         expect(response.headers["set-cookie"][0]).toContain("Secure");
     });
 
-    test("logout clears cookie and redirects without a token", async () => {
+    test("logout clears cookie and redirects without a loginToken", async () => {
         const response = await request(createApp()).post("/api/auth/logout");
 
         const cookie = response.headers["set-cookie"][0];
         expect(response.status).toBe(302);
         expect(response.headers.location).toBe("/login");
-        expect(cookie).toContain("token=;");
+        expect(cookie).toContain("loginToken=;");
         expect(cookie).toContain("Path=/");
+        expect(response.headers["set-cookie"][1]).toContain("roleToken=;");
     });
 
-    test("logout clears invalid token without failing", async () => {
+    test("logout clears invalid loginToken without failing", async () => {
         const response = await request(createApp())
             .post("/api/auth/logout")
-            .set("Cookie", "token=bad-token");
+            .set("Cookie", "loginToken=bad-login-token");
 
         expect(response.status).toBe(302);
         expect(response.headers.location).toBe("/login");
@@ -168,11 +170,11 @@ describe("auth flow", () => {
     });
 
     test("valid logout updates user state", async () => {
-        const token = jwt.sign({ userId: "user-1" }, process.env.JWT_SECRET);
+        const loginToken = jwt.sign({ userId: "user-1" }, process.env.JWT_SECRET);
 
         const response = await request(createApp())
             .post("/api/auth/logout")
-            .set("Cookie", `token=${token}`);
+            .set("Cookie", `loginToken=${loginToken}`);
 
         expect(response.status).toBe(302);
         expect(User.findByIdAndUpdate).toHaveBeenCalledWith("user-1", {
@@ -182,7 +184,7 @@ describe("auth flow", () => {
     });
 
     test("update uses JWT user id and ignores body userId", async () => {
-        const token = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
+        const loginToken = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
         const user = {
             passwordHash: "hash",
             name: "Old",
@@ -195,7 +197,7 @@ describe("auth flow", () => {
 
         const response = await request(createApp())
             .post("/api/auth/update")
-            .set("Cookie", `token=${token}`)
+            .set("Cookie", `loginToken=${loginToken}`)
             .send({
                 userId: "attacker-user",
                 name: "New",
@@ -209,7 +211,7 @@ describe("auth flow", () => {
     });
 
     test("update validates password", async () => {
-        const token = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
+        const loginToken = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
         const user = {
             passwordHash: "hash",
             save: jest.fn(),
@@ -219,7 +221,7 @@ describe("auth flow", () => {
 
         const response = await request(createApp())
             .patch("/api/auth/update")
-            .set("Cookie", `token=${token}`)
+            .set("Cookie", `loginToken=${loginToken}`)
             .send({ password: "wrong-password", name: "New" });
 
         expect(response.status).toBe(401);
@@ -227,7 +229,7 @@ describe("auth flow", () => {
     });
 
 
-    test("update rejects missing token before controller lookup", async () => {
+    test("update rejects missing loginToken before controller lookup", async () => {
         const response = await request(createApp())
             .post("/api/auth/update")
             .send({ password: "current-password", name: "New" });
@@ -237,18 +239,18 @@ describe("auth flow", () => {
         expect(User.findById).not.toHaveBeenCalled();
     });
 
-    test("delete rejects invalid token before controller lookup", async () => {
+    test("delete rejects invalid loginToken before controller lookup", async () => {
         const response = await request(createApp())
             .post("/api/auth/delete")
-            .set("Cookie", "token=bad-token")
+            .set("Cookie", "loginToken=bad-login-token")
             .send({ password: "current-password" });
 
         expect(response.status).toBe(401);
-        expect(response.body).toEqual({ message: "Invalid or expired token" });
+        expect(response.body).toEqual({ message: "Invalid or expired login token" });
         expect(User.findById).not.toHaveBeenCalled();
     });
     test("delete uses JWT user id, validates password, deletes user, and clears cookie", async () => {
-        const token = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
+        const loginToken = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
         const user = { passwordHash: "hash" };
         User.findById.mockReturnValue(createUserQuery(user));
         bcryptjs.compare.mockResolvedValue(true);
@@ -256,17 +258,132 @@ describe("auth flow", () => {
 
         const response = await request(createApp())
             .post("/api/auth/delete")
-            .set("Cookie", `token=${token}`)
+            .set("Cookie", `loginToken=${loginToken}`)
             .send({ userId: "attacker-user", password: "current-password" });
 
         expect(response.status).toBe(302);
         expect(response.headers.location).toBe("/login");
         expect(User.findById).toHaveBeenCalledWith("real-user");
         expect(User.findByIdAndDelete).toHaveBeenCalledWith("real-user");
-        expect(response.headers["set-cookie"][0]).toContain("token=;");
+        expect(response.headers["set-cookie"][0]).toContain("loginToken=;");
+        expect(response.headers["set-cookie"][1]).toContain("roleToken=;");
     });
 });
 
 
 
+
+describe("auth middleware", () => {
+    const OLD_ENV = process.env;
+
+    beforeEach(() => {
+        process.env = { ...OLD_ENV, JWT_SECRET: "test-secret" };
+    });
+
+    afterAll(() => {
+        process.env = OLD_ENV;
+    });
+
+    const createResponse = () => ({
+        status: jest.fn().mockReturnThis(),
+        json: jest.fn(),
+    });
+
+    test("authenticateUser accepts a valid loginToken", () => {
+        const loginToken = jwt.sign({ userId: "user-1", name: "Bryan" }, process.env.JWT_SECRET);
+        const req = { cookies: { loginToken } };
+        const res = createResponse();
+        const next = jest.fn();
+
+        authenticateUser(req, res, next);
+
+        expect(req.user).toMatchObject({ userId: "user-1", name: "Bryan" });
+        expect(next).toHaveBeenCalled();
+    });
+
+    test("authenticateUser rejects missing loginToken", () => {
+        const req = { cookies: {} };
+        const res = createResponse();
+        const next = jest.fn();
+
+        authenticateUser(req, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(res.json).toHaveBeenCalledWith({ message: "Authentication required" });
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    test("authenticateUser rejects invalid loginToken", () => {
+        const req = { cookies: { loginToken: "bad-login-token" } };
+        const res = createResponse();
+        const next = jest.fn();
+
+        authenticateUser(req, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(res.json).toHaveBeenCalledWith({ message: "Invalid or expired login token" });
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    test("authorizeUserRole accepts a matching roleToken", () => {
+        const roleToken = jwt.sign({ userId: "user-1", teamId: "team-1", teamName: "Team A", role: "owner" }, process.env.JWT_SECRET);
+        const req = {
+            cookies: { roleToken },
+            user: { userId: "user-1", name: "Bryan", email: "bryan@example.com", avatarUrl: null },
+        };
+        const res = createResponse();
+        const next = jest.fn();
+
+        authorizeUserRole(req, res, next);
+
+        expect(req.user).toEqual({
+            userId: "user-1",
+            name: "Bryan",
+            email: "bryan@example.com",
+            avatarUrl: null,
+            teamId: "team-1",
+            teamName: "Team A",
+            role: "owner",
+        });
+        expect(next).toHaveBeenCalled();
+    });
+
+    test("authorizeUserRole rejects missing roleToken", () => {
+        const req = { cookies: {}, user: { userId: "user-1" } };
+        const res = createResponse();
+        const next = jest.fn();
+
+        authorizeUserRole(req, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(res.json).toHaveBeenCalledWith({ message: "Team role authorization required" });
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    test("authorizeUserRole rejects mismatched user IDs", () => {
+        const roleToken = jwt.sign({ userId: "other-user", teamId: "team-1", role: "owner" }, process.env.JWT_SECRET);
+        const req = { cookies: { roleToken }, user: { userId: "user-1" } };
+        const res = createResponse();
+        const next = jest.fn();
+
+        authorizeUserRole(req, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(res.json).toHaveBeenCalledWith({ message: "Invalid team role authorization" });
+        expect(next).not.toHaveBeenCalled();
+    });
+
+    test("authorizeUserRole rejects roleToken without teamId or role", () => {
+        const roleToken = jwt.sign({ userId: "user-1", teamName: "Team A" }, process.env.JWT_SECRET);
+        const req = { cookies: { roleToken }, user: { userId: "user-1" } };
+        const res = createResponse();
+        const next = jest.fn();
+
+        authorizeUserRole(req, res, next);
+
+        expect(res.status).toHaveBeenCalledWith(401);
+        expect(res.json).toHaveBeenCalledWith({ message: "Invalid team role authorization" });
+        expect(next).not.toHaveBeenCalled();
+    });
+});
 

@@ -22,6 +22,9 @@ const actionController = async (req, res) => {
         case "createProject":
             return actionRenderers.renderCreateProject(req, res);
 
+        case "createTeam":
+            return actionRenderers.renderCreateTeam(req, res);
+
         case "editProject":
             return actionRenderers.renderEditProject(req, res);
 
@@ -46,3 +49,4 @@ const actionController = async (req, res) => {
 }
 
 module.exports = { actionController };
+

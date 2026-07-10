@@ -1,8 +1,88 @@
-<form action="/api/content/actions" class="role-action-grid"
-    style="display: grid; grid-template-columns: repeat(4, 5fr); gap: 10px; padding: 50px; box-sizing: border-box;"
-    method="GET">
+<section class="console-shell">
+    <aside class="console-sidebar glass-panel">
+        <div class="brand-block">
+            <div class="brand-mark">MP</div>
+            <div>
+                <p class="brand-title">MIDNIGHT</p>
+                <p class="brand-subtitle">RBAC Command</p>
+            </div>
+        </div>
 
-    <!-- Render buttons based on user role -->
+        <div class="context-card">
+            <p class="mono-kicker">Role Context</p>
+            <div class="context-row">
+                <span>Role</span>
+                <strong><%= role %></strong>
+            </div>
+            <p>Team: <%= team && team.teamName ? team.teamName : "No team selected" %></p>
+            <p>Scope: Active workspace</p>
+        </div>
 
-    <%- include('./partials/' + role + 'Buttons.ejs' ) %>
-</form>
+        <nav class="console-nav" aria-label="Console sections">
+            <a class="is-active" href="/main"><span>01</span>Dashboard</a>
+            <a href="/tasks"><span>02</span>Task Matrix</a>
+            <a href="/projects"><span>03</span>Projects</a>
+            <a href="/permissions"><span>04</span>Permissions</a>
+            <a href="/members"><span>05</span>Members</a>
+            <a href="/audit"><span>06</span>Audit Logs</a>
+            <a href="/notes"><span>07</span>Service Notes</a>
+            <a href="/settings"><span>08</span>Settings</a>
+        </nav>
+
+        <form action="/api/auth/logout" method="post" class="sidebar-logout">
+            <button type="submit">Logout</button>
+        </form>
+    </aside>
+
+    <section class="console-main">
+        <header class="console-header">
+            <div>
+                <p class="mono-kicker">Operational Permissions Console</p>
+                <h1>Action Surface</h1>
+                <p>Launch role-scoped project, task, member, and audit workflows through the shared action controller.</p>
+            </div>
+            <div class="system-status glass-panel">
+                <span class="pulse-dot" aria-hidden="true"></span>
+                <div>
+                    <strong>Routes armed</strong>
+                    <small>/api/content/actions</small>
+                </div>
+            </div>
+        </header>
+
+        <div class="metric-strip">
+            <article class="metric-card glass-panel lithic-border">
+                <span>Auth Guard</span>
+                <strong>Active</strong>
+                <p>GET and POST action paths require token context.</p>
+            </article>
+            <article class="metric-card glass-panel lithic-border">
+                <span>Role Mode</span>
+                <strong><%= role %></strong>
+                <p>Dashboard actions are filtered by resolved role.</p>
+            </article>
+            <article class="metric-card glass-panel lithic-border">
+                <span>Audit Context</span>
+                <strong>Ready</strong>
+                <p>Service calls receive request metadata.</p>
+            </article>
+        </div>
+
+        <form action="/api/content/actions" class="role-action-grid glass-panel lithic-border" method="GET">
+            <div class="action-grid-header">
+                <div>
+                    <p class="mono-kicker">Available Actions</p>
+                    <h2>Choose an operation</h2>
+                </div>
+                <span class="role-chip"><%= role %></span>
+            </div>
+
+            <div class="command-grid">
+                <%- include('./partials/' + role + 'Buttons.ejs' ) %>
+            </div>
+        </form>
+    </section>
+</section>
+
+
+

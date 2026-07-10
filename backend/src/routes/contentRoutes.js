@@ -1,13 +1,14 @@
 const express = require("express")
 const { actionController } = require("../controllers/actionController");
-const verifyToken = require("../middlewares/authMiddleware");
+const { authenticateUser, authorizeUserRole } = require("../middlewares/authMiddleware");
 const authorizeRoles = require("../middlewares/roleMiddleware");
 const router = express.Router()
 
 // Admin Level Access
 router.get(
     "/admin",
-    verifyToken,
+    authenticateUser,
+    authorizeUserRole,
     authorizeRoles("admin"),
     (req, res) => {
         res.send("Admin Content");
@@ -16,7 +17,8 @@ router.get(
 // Manager Level
 router.get(
     "/manager",
-    verifyToken,
+    authenticateUser,
+    authorizeUserRole,
     authorizeRoles("admin", "manager"),
     (req, res) => {
         res.send("Manager Content");
@@ -25,14 +27,15 @@ router.get(
 // User Level
 router.get(
     "/user",
-    verifyToken,
+    authenticateUser,
+    authorizeUserRole,
     authorizeRoles("admin", "manager", "user"),
     (req, res) => {
         res.send("User Content");
     })
 
-router.get('/actions', verifyToken, actionController)
-router.post('/actions', verifyToken, actionController)
+router.get('/actions', authenticateUser, authorizeUserRole, actionController)
+router.post('/actions', authenticateUser, authorizeUserRole, actionController)
 
 // router.post
 

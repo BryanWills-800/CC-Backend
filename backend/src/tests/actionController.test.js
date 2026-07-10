@@ -15,6 +15,7 @@ jest.mock("../services/actionMessageServices", () => ({
         changeRoles: jest.fn(),
         comment: jest.fn(),
         createTask: jest.fn(),
+        createTeam: jest.fn(),
         deleteProject: jest.fn(),
         deleteTask: jest.fn(),
         editProject: jest.fn(),
@@ -54,6 +55,7 @@ const actionCases = [
     ["viewTasks", "viewTasks", "View tasks"],
     ["comment", "comment", "Create comment"],
     ["createTask", "createTask", "Create task"],
+    ["createTeam", "createTeam", "Create team"],
     ["updateAssignedTask", "updateAssignedTask", "Update assigned task"],
     ["inviteMembers", "inviteMembers", "Invite member"],
     ["editProject", "editProject", "Load project for editing"],
@@ -85,7 +87,7 @@ describe("actionController", () => {
             .post("/actions")
             .send(`action=${action}`);
 
-        expect(response.status).toBe(200);
+        expect(response.status).toBe(action === "createTeam" ? 201 : 200);
         expect(response.text).toContain("Action completed successfully.");
         expect(actionMessageServices[serviceName]).toHaveBeenCalledWith(expect.objectContaining({
             action,
@@ -155,3 +157,5 @@ describe("actionController", () => {
         expect(response.text).toBe("Unknown action");
     });
 });
+
+

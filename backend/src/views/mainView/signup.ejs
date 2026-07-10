@@ -1,18 +1,27 @@
 <section class="auth-shell">
-    <div class="auth-card">
+    <div class="auth-card glass-panel lithic-border">
+        <p class="mono-kicker">Operator Enrollment</p>
         <h2>Create account</h2>
+        <p class="auth-copy">Create a user profile for future role-aware dashboard access.</p>
+
         <form action="/api/auth/signup" method="post" class="auth-form">
-            <label for="name">Name</label>
-            <input type="text" id="name" name="name" autocomplete="username" required>
+            <div class="field-stack">
+                <label for="name">Name</label>
+                <input type="text" id="name" name="name" autocomplete="username" required>
+            </div>
 
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" autocomplete="email" required>
+            <div class="field-stack">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" autocomplete="email" required>
+            </div>
 
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" autocomplete="new-password" required>
+            <div class="field-stack">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" autocomplete="new-password" required>
+            </div>
 
             <div class="auth-actions">
-                <input type="submit" value="Signup">
+                <button type="submit">Signup</button>
                 <a href="/login">Already have an account?</a>
             </div>
         </form>
