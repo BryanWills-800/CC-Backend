@@ -16,7 +16,7 @@ const loginCookieOptions = () => ({
 
 const signup = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { name, email, password, role } = req.body;
         const user = await User.findOne({ $or: [{ name }, { email }] });
         if (user) {
             return res
@@ -31,7 +31,7 @@ const signup = async (req, res) => {
             name: name,
             email: email,
             passwordHash: hash,
-            role: "viewer",
+            role: role,
         })
         await newUser.save()
         res

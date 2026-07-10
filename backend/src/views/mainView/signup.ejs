@@ -11,6 +11,14 @@
             <label for="password">Password</label>
             <input type="password" id="password" name="password" autocomplete="new-password" required>
 
+            <label>Select role</label>
+            <select name="role" id="role" required>
+                <option value="admin">Admin</option>
+                <option value="maintainer">Maintainer</option>
+                <option value="member">Member</option>
+                <option value="viewer">Viewer</option>
+            </select>
+
             <div class="auth-actions">
                 <input type="submit" value="Signup">
                 <a href="/login">Already have an account?</a>
