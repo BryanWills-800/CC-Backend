@@ -8,6 +8,7 @@ const expectedTestFiles = [
     "auth.test.js",
     "createProject.test.js",
     "dbConnect.test.js",
+    "teamMaker.test.js",
     "userController.test.js",
 ];
 

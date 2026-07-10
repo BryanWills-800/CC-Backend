@@ -9,3 +9,11 @@ stitch/
 comprehensive.md
 backend/src/models/user-login-details.md
 
+backend/.env
+.env.local
+.env.*.local
+backend/.env.local
+backend/.env.*.local
+*login-details*.md
+*credentials*.md
+*password*.md
