@@ -12,9 +12,6 @@ const uiRoutes = require("./routes/uiRoutes");
 const buttonRoutes = require("./routes/buttonRoutes");
 // const { permissions, checkPermissions } = require("./permissions");
 
-// DB Connection
-dbConnect()
-
 // App Configuration
 const app = express();
 
@@ -43,7 +40,12 @@ app.use("/", uiRoutes);
 
 // Start the Server
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Server is running on URL http://localhost:${port}`);
-});
+const startServer = async () => {
+    await dbConnect();
 
+    app.listen(port, () => {
+        console.log(`Server is running on URL http://localhost:${port}`);
+    });
+}
+
+startServer();
