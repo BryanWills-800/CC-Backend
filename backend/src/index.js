@@ -12,7 +12,6 @@ const uiRoutes = require("./routes/uiRoutes");
 const buttonRoutes = require("./routes/buttonRoutes");
 // const { permissions, checkPermissions } = require("./permissions");
 
-// App Configuration
 const app = express();
 
 // Middleware
