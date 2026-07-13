@@ -9,23 +9,22 @@ jest.mock("bcryptjs", () => ({
     hash: jest.fn(),
 }));
 
-jest.mock("../models/userModel", () => {
-    const MockUser = jest.fn((data) => ({
-        ...data,
-        save: MockUser.mockSave || jest.fn().mockResolvedValue(undefined),
-    }));
-
-    MockUser.findOne = jest.fn();
-    MockUser.findById = jest.fn();
-    MockUser.findByIdAndUpdate = jest.fn();
-    MockUser.findByIdAndDelete = jest.fn();
-    MockUser.mockSave = jest.fn().mockResolvedValue(undefined);
-
-    return MockUser;
-});
+jest.mock("../repositories/prismaRepositories", () => ({
+    prismaRepositories: {
+        User: {
+            findByNameOrEmail: jest.fn(),
+            findByName: jest.fn(),
+            findById: jest.fn(),
+            create: jest.fn(),
+            update: jest.fn(),
+            delete: jest.fn(),
+        },
+    },
+}));
 
 const bcryptjs = require("bcryptjs");
-const User = require("../models/userModel");
+const { prismaRepositories } = require("../repositories/prismaRepositories");
+const User = prismaRepositories.User;
 const authRoutes = require("../routes/authRoutes");
 const { authenticateUser, authorizeUserRole } = require("../middlewares/authMiddleware");
 
@@ -38,17 +37,15 @@ const createApp = () => {
     return app;
 };
 
-const createUserQuery = (user) => ({
-    select: jest.fn().mockResolvedValue(user),
-});
-
 describe("auth flow", () => {
     const OLD_ENV = process.env;
 
     beforeEach(() => {
         jest.clearAllMocks();
-        User.mockSave = jest.fn().mockResolvedValue(undefined);
         process.env = { ...OLD_ENV, JWT_SECRET: "test-secret" };
+        User.create.mockResolvedValue({ id: "user-1" });
+        User.update.mockResolvedValue({ id: "user-1" });
+        User.delete.mockResolvedValue({ id: "user-1" });
     });
 
     afterAll(() => {
@@ -56,7 +53,7 @@ describe("auth flow", () => {
     });
 
     test("signup hashes password, saves user, and redirects to login", async () => {
-        User.findOne.mockResolvedValue(null);
+        User.findByNameOrEmail.mockResolvedValue(null);
         bcryptjs.genSalt.mockResolvedValue("salt");
         bcryptjs.hash.mockResolvedValue("hashed-password");
 
@@ -66,18 +63,17 @@ describe("auth flow", () => {
 
         expect(response.status).toBe(302);
         expect(response.headers.location).toBe("/login");
-        expect(User.findOne).toHaveBeenCalledWith({ $or: [{ name: "Bryan" }, { email: "bryan@example.com" }] });
+        expect(User.findByNameOrEmail).toHaveBeenCalledWith({ name: "Bryan", email: "bryan@example.com" });
         expect(bcryptjs.hash).toHaveBeenCalledWith("Password123!", "salt");
-        expect(User).toHaveBeenCalledWith({
+        expect(User.create).toHaveBeenCalledWith({
             name: "Bryan",
             email: "bryan@example.com",
             passwordHash: "hashed-password",
         });
-        expect(User.mockSave).toHaveBeenCalled();
     });
 
     test("signup returns 409 when name or email already exists", async () => {
-        User.findOne.mockResolvedValue({ _id: "existing-user" });
+        User.findByNameOrEmail.mockResolvedValue({ id: "existing-user" });
 
         const response = await request(createApp())
             .post("/api/auth/signup")
@@ -85,12 +81,12 @@ describe("auth flow", () => {
 
         expect(response.status).toBe(409);
         expect(response.body).toEqual({ message: "User already exists" });
-        expect(User.mockSave).not.toHaveBeenCalled();
+        expect(User.create).not.toHaveBeenCalled();
     });
 
     test("signup maps duplicate key save errors to 409", async () => {
-        User.findOne.mockResolvedValue(null);
-        User.mockSave = jest.fn().mockRejectedValue({ code: 11000 });
+        User.findByNameOrEmail.mockResolvedValue(null);
+        User.create.mockRejectedValue({ code: "P2002" });
         bcryptjs.genSalt.mockResolvedValue("salt");
         bcryptjs.hash.mockResolvedValue("hashed-password");
 
@@ -104,15 +100,13 @@ describe("auth flow", () => {
 
     test("localhost login cookie is set without Secure", async () => {
         process.env.NODE_ENV = "development";
-        const user = {
-            _id: "user-1",
+        User.findByName.mockResolvedValue({
+            id: "user-1",
             name: "Bryan",
             email: "bryan@example.com",
             avatarUrl: null,
             passwordHash: "hash",
-            save: jest.fn().mockResolvedValue(undefined),
-        };
-        User.findOne.mockReturnValue(createUserQuery(user));
+        });
         bcryptjs.compare.mockResolvedValue(true);
 
         const response = await request(createApp())
@@ -130,15 +124,13 @@ describe("auth flow", () => {
 
     test("production login cookie includes Secure", async () => {
         process.env.NODE_ENV = "production";
-        const user = {
-            _id: "user-1",
+        User.findByName.mockResolvedValue({
+            id: "user-1",
             name: "Bryan",
             email: "bryan@example.com",
             avatarUrl: null,
             passwordHash: "hash",
-            save: jest.fn().mockResolvedValue(undefined),
-        };
-        User.findOne.mockReturnValue(createUserQuery(user));
+        });
         bcryptjs.compare.mockResolvedValue(true);
 
         const response = await request(createApp())
@@ -166,7 +158,7 @@ describe("auth flow", () => {
 
         expect(response.status).toBe(302);
         expect(response.headers.location).toBe("/login");
-        expect(User.findByIdAndUpdate).not.toHaveBeenCalled();
+        expect(User.update).not.toHaveBeenCalled();
     });
 
     test("valid logout updates user state", async () => {
@@ -177,22 +169,15 @@ describe("auth flow", () => {
             .set("Cookie", `loginToken=${loginToken}`);
 
         expect(response.status).toBe(302);
-        expect(User.findByIdAndUpdate).toHaveBeenCalledWith("user-1", {
+        expect(User.update).toHaveBeenCalledWith("user-1", {
             isActive: false,
-            lastLogoutAt: expect.any(Number),
+            lastLogoutAt: expect.any(Date),
         });
     });
 
     test("update uses JWT user id and ignores body userId", async () => {
         const loginToken = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
-        const user = {
-            passwordHash: "hash",
-            name: "Old",
-            email: "old@example.com",
-            avatarUrl: null,
-            save: jest.fn().mockResolvedValue(undefined),
-        };
-        User.findById.mockReturnValue(createUserQuery(user));
+        User.findById.mockResolvedValue({ passwordHash: "hash" });
         bcryptjs.compare.mockResolvedValue(true);
 
         const response = await request(createApp())
@@ -206,17 +191,12 @@ describe("auth flow", () => {
 
         expect(response.status).toBe(200);
         expect(User.findById).toHaveBeenCalledWith("real-user");
-        expect(user.name).toBe("New");
-        expect(user.save).toHaveBeenCalled();
+        expect(User.update).toHaveBeenCalledWith("real-user", { name: "New" });
     });
 
     test("update validates password", async () => {
         const loginToken = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
-        const user = {
-            passwordHash: "hash",
-            save: jest.fn(),
-        };
-        User.findById.mockReturnValue(createUserQuery(user));
+        User.findById.mockResolvedValue({ passwordHash: "hash" });
         bcryptjs.compare.mockResolvedValue(false);
 
         const response = await request(createApp())
@@ -225,9 +205,8 @@ describe("auth flow", () => {
             .send({ password: "wrong-password", name: "New" });
 
         expect(response.status).toBe(401);
-        expect(user.save).not.toHaveBeenCalled();
+        expect(User.update).not.toHaveBeenCalled();
     });
-
 
     test("update rejects missing loginToken before controller lookup", async () => {
         const response = await request(createApp())
@@ -249,12 +228,11 @@ describe("auth flow", () => {
         expect(response.body).toEqual({ message: "Invalid or expired login token" });
         expect(User.findById).not.toHaveBeenCalled();
     });
+
     test("delete uses JWT user id, validates password, deletes user, and clears cookie", async () => {
         const loginToken = jwt.sign({ userId: "real-user" }, process.env.JWT_SECRET);
-        const user = { passwordHash: "hash" };
-        User.findById.mockReturnValue(createUserQuery(user));
+        User.findById.mockResolvedValue({ passwordHash: "hash" });
         bcryptjs.compare.mockResolvedValue(true);
-        User.findByIdAndDelete.mockResolvedValue(undefined);
 
         const response = await request(createApp())
             .post("/api/auth/delete")
@@ -264,14 +242,11 @@ describe("auth flow", () => {
         expect(response.status).toBe(302);
         expect(response.headers.location).toBe("/login");
         expect(User.findById).toHaveBeenCalledWith("real-user");
-        expect(User.findByIdAndDelete).toHaveBeenCalledWith("real-user");
+        expect(User.delete).toHaveBeenCalledWith("real-user");
         expect(response.headers["set-cookie"][0]).toContain("loginToken=;");
         expect(response.headers["set-cookie"][1]).toContain("roleToken=;");
     });
 });
-
-
-
 
 describe("auth middleware", () => {
     const OLD_ENV = process.env;
@@ -386,4 +361,3 @@ describe("auth middleware", () => {
         expect(next).not.toHaveBeenCalled();
     });
 });
-

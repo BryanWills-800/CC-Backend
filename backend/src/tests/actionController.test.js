@@ -1,12 +1,6 @@
-jest.mock("../services/createProject", () => ({
-    createProject: {
-        meta: {
-            PROJECT_CREATOR_ROLES: ["owner", "maintainer"],
-        },
-        services: {
-            createProjectService: jest.fn(),
-        },
-    },
+jest.mock("../services/actionMessages/createProjectServices", () => ({
+    PROJECT_CREATOR_ROLES: ["owner", "maintainer"],
+    createProjectService: jest.fn(),
 }));
 
 jest.mock("../services/actionMessageServices", () => ({
@@ -29,9 +23,12 @@ jest.mock("../services/actionMessageServices", () => ({
 const express = require("express");
 const path = require("path");
 const request = require("supertest");
+const cookieParser = require("cookie-parser");
+const jwt = require("jsonwebtoken");
 const { actionController } = require("../controllers/actionController");
-const { createProject } = require("../services/createProject");
+const { createProjectService } = require("../services/actionMessages/createProjectServices");
 const { actionMessageServices } = require("../services/actionMessageServices");
+const contentRoutes = require("../routes/contentRoutes");
 
 const createApp = () => {
     const app = express();
@@ -51,6 +48,25 @@ const createApp = () => {
     return app;
 };
 
+
+const createContentApp = () => {
+    const app = express();
+    app.set("view engine", "ejs");
+    app.set("views", [
+        path.join(__dirname, "../views/mainView"),
+        path.join(__dirname, "../views"),
+    ]);
+    app.use(express.urlencoded({ extended: true }));
+    app.use(express.json());
+    app.use(cookieParser());
+    app.use("/api/content", contentRoutes);
+    return app;
+};
+
+const buildLoginCookie = () => {
+    const loginToken = jwt.sign({ userId: "user-1", name: "Bryan" }, process.env.JWT_SECRET);
+    return `loginToken=${loginToken}`;
+};
 const actionCases = [
     ["viewTasks", "viewTasks", "View tasks"],
     ["comment", "comment", "Create comment"],
@@ -98,6 +114,28 @@ describe("actionController", () => {
         }));
     });
 
+
+    test("content route allows createTeam without a roleToken", async () => {
+        process.env.JWT_SECRET = "test-secret";
+
+        const response = await request(createContentApp())
+            .get("/api/content/actions?action=createTeam")
+            .set("Cookie", buildLoginCookie());
+
+        expect(response.status).toBe(200);
+        expect(response.text).toContain("Create team");
+    });
+
+    test("content route still requires roleToken for team-scoped actions", async () => {
+        process.env.JWT_SECRET = "test-secret";
+
+        const response = await request(createContentApp())
+            .get("/api/content/actions?action=createProject")
+            .set("Cookie", buildLoginCookie());
+
+        expect(response.status).toBe(401);
+        expect(response.body).toEqual({ message: "Team role authorization required" });
+    });
     test("renders create project form", async () => {
         const response = await request(createApp()).get("/actions?action=createProject");
 
@@ -109,7 +147,7 @@ describe("actionController", () => {
     });
 
     test("submits create project form through service", async () => {
-        createProject.services.createProjectService.mockResolvedValue({ name: "Real Project" });
+        createProjectService.mockResolvedValue({ name: "Real Project" });
 
         const response = await request(createApp())
             .post("/actions")
@@ -117,7 +155,7 @@ describe("actionController", () => {
 
         expect(response.status).toBe(201);
         expect(response.text).toContain("Project &#34;Real Project&#34; created successfully.");
-        expect(createProject.services.createProjectService).toHaveBeenCalledWith(expect.objectContaining({
+        expect(createProjectService).toHaveBeenCalledWith(expect.objectContaining({
             teamId: "team-1",
             name: "Real Project",
             description: "Live",
@@ -130,7 +168,7 @@ describe("actionController", () => {
     });
 
     test("rerenders create project form with service errors", async () => {
-        createProject.services.createProjectService.mockRejectedValue(Object.assign(new Error("Team not found"), { statusCode: 404 }));
+        createProjectService.mockRejectedValue(Object.assign(new Error("Team not found"), { statusCode: 404 }));
 
         const response = await request(createApp())
             .post("/actions")
@@ -157,5 +195,8 @@ describe("actionController", () => {
         expect(response.text).toBe("Unknown action");
     });
 });
+
+
+
 
 

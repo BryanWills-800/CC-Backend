@@ -5,68 +5,25 @@ const testFn = global.test || nodeTest.test;
 const assert = require("node:assert/strict");
 
 const { actionMessageServices } = require("../services/actionMessageServices");
-
-const createMockFn = () => {
-    const mockFn = async (...args) => {
-        mockFn.calls.push(args);
-
-        if (mockFn.error) {
-            throw mockFn.error;
-        }
-
-        if (mockFn.impl) {
-            return mockFn.impl(...args);
-        }
-
-        return mockFn.value;
-    };
-
-    mockFn.calls = [];
-    mockFn.mockResolvedValue = (value) => {
-        mockFn.value = value;
-    };
-    mockFn.mockImplementation = (impl) => {
-        mockFn.impl = impl;
-    };
-
-    return mockFn;
-};
-
-const createDoc = (attrs) => {
-    const doc = { ...attrs };
-    doc.save = createMockFn();
-    doc.save.mockResolvedValue(doc);
-    return doc;
-};
-
-const createDeps = () => ({
-    Project: { findById: createMockFn() },
-    Team: { findById: createMockFn(), create: createMockFn() },
-    TeamMembership: { findOne: createMockFn(), create: createMockFn() },
-    TeamInvitation: { create: createMockFn() },
-    Task: { find: createMockFn(), findById: createMockFn(), create: createMockFn() },
-    Comment: { create: createMockFn() },
-    ActivityLog: { create: createMockFn() },
-});
+const { createActionDeps } = require("./serviceTestUtils");
 
 const allowMembership = (deps, role = "maintainer") => {
-    deps.TeamMembership.findOne.mockResolvedValue({ role });
+    deps.TeamMembership.findForUserTeam.mockResolvedValue({ role });
 };
 
 describeFn("action message services", () => {
     let deps;
 
     beforeEachFn(() => {
-        deps = createDeps();
-        deps.Team.findById.mockResolvedValue({ _id: "team-1", isArchived: false });
-        deps.ActivityLog.create.mockResolvedValue({ _id: "log-1" });
+        deps = createActionDeps();
+        deps.Team.findById.mockResolvedValue({ id: "team-1", isArchived: false });
+        deps.ActivityLog.create.mockResolvedValue({ id: "log-1" });
         allowMembership(deps);
     });
 
-
     testFn("creates a team with owner membership and activity log", async () => {
-        deps.Team.create.mockImplementation(async (payload) => ({ _id: "team-new", ...payload }));
-        deps.TeamMembership.create.mockResolvedValue({ _id: "membership-1" });
+        deps.Team.create.mockImplementation(async (payload) => ({ id: "team-new", ...payload }));
+        deps.TeamMembership.create.mockResolvedValue({ id: "membership-1" });
 
         const result = await actionMessageServices.createTeam({
             userId: "user-1",
@@ -80,13 +37,13 @@ describeFn("action message services", () => {
             name: "Team A",
             description: "New workspace",
             slug: "team-a",
-            createdBy: "user-1",
+            createdById: "user-1",
         });
         assert.deepEqual(deps.TeamMembership.create.calls[0][0], {
-            team: "team-new",
-            user: "user-1",
+            teamId: "team-new",
+            userId: "user-1",
             role: "owner",
-            invitedBy: null,
+            invitedById: null,
         });
         assert.equal(deps.ActivityLog.create.calls[0][0].action, "team.created");
         assert.equal(deps.ActivityLog.create.calls[0][0].ipAddress, "127.0.0.1");
@@ -107,25 +64,26 @@ describeFn("action message services", () => {
     });
 
     testFn("creates a team with an optional blank description", async () => {
-        deps.Team.create.mockImplementation(async (payload) => ({ _id: "team-new", ...payload }));
-        deps.TeamMembership.create.mockResolvedValue({ _id: "membership-1" });
+        deps.Team.create.mockImplementation(async (payload) => ({ id: "team-new", ...payload }));
+        deps.TeamMembership.create.mockResolvedValue({ id: "membership-1" });
 
         await actionMessageServices.createTeam({ userId: "user-1", name: "Team B" }, deps);
 
         assert.equal(deps.Team.create.calls[0][0].description, "");
     });
+
     testFn("views tasks for a team member", async () => {
         deps.Task.find.mockResolvedValue([{ title: "One" }, { title: "Two" }]);
 
         const result = await actionMessageServices.viewTasks({ teamId: "team-1", userId: "user-1" }, deps);
 
         assert.equal(result.message, "Found 2 task(s).");
-        assert.deepEqual(deps.Task.find.calls, [[{ isDeleted: false, team: "team-1" }]]);
+        assert.deepEqual(deps.Task.find.calls, [[{ isDeleted: false, teamId: "team-1" }]]);
     });
 
     testFn("creates a task and logs activity", async () => {
-        deps.Project.findById.mockResolvedValue({ _id: "project-1", team: "team-1", isDeleted: false });
-        deps.Task.create.mockResolvedValue({ _id: "task-1", title: "Build API" });
+        deps.Project.findById.mockResolvedValue({ id: "project-1", teamId: "team-1", isDeleted: false });
+        deps.Task.create.mockResolvedValue({ id: "task-1", title: "Build API" });
 
         const result = await actionMessageServices.createTask({
             projectId: "project-1",
@@ -136,13 +94,13 @@ describeFn("action message services", () => {
 
         assert.equal(result.message, "Task \"Build API\" created successfully.");
         assert.deepEqual(deps.Task.create.calls[0][0], {
-            team: "team-1",
-            project: "project-1",
+            teamId: "team-1",
+            projectId: "project-1",
             title: "Build API",
             description: "",
             status: "todo",
             priority: "medium",
-            createdBy: "user-1",
+            createdById: "user-1",
             dueDate: null,
         });
         assert.equal(deps.ActivityLog.create.calls[0][0].action, "task.created");
@@ -157,18 +115,19 @@ describeFn("action message services", () => {
     });
 
     testFn("updates only an assigned task", async () => {
-        const task = createDoc({ _id: "task-1", team: "team-1", title: "Build API", assignedTo: ["user-1"], status: "todo" });
+        const task = { id: "task-1", teamId: "team-1", title: "Build API", assignedTo: [{ id: "user-1" }], status: "todo" };
         deps.Task.findById.mockResolvedValue(task);
+        deps.Task.update.mockResolvedValue({ ...task, status: "done", completedAt: new Date() });
 
         const result = await actionMessageServices.updateAssignedTask({ taskId: "task-1", userId: "user-1", status: "done" }, deps);
 
         assert.equal(result.message, "Task \"Build API\" updated successfully.");
-        assert.equal(task.status, "done");
-        assert.ok(task.completedAt);
+        assert.equal(deps.Task.update.calls[0][1].status, "done");
+        assert.ok(deps.Task.update.calls[0][1].completedAt);
     });
 
     testFn("rejects updates for unassigned users", async () => {
-        deps.Task.findById.mockResolvedValue(createDoc({ _id: "task-1", team: "team-1", assignedTo: ["other-user"] }));
+        deps.Task.findById.mockResolvedValue({ id: "task-1", teamId: "team-1", assignedTo: [{ id: "other-user" }] });
 
         await assert.rejects(
             () => actionMessageServices.updateAssignedTask({ taskId: "task-1", userId: "user-1", status: "done" }, deps),
@@ -177,8 +136,8 @@ describeFn("action message services", () => {
     });
 
     testFn("creates a comment and logs activity", async () => {
-        deps.Task.findById.mockResolvedValue({ _id: "task-1", team: "team-1", project: "project-1", isDeleted: false });
-        deps.Comment.create.mockResolvedValue({ _id: "comment-1", content: "Looks good" });
+        deps.Task.findById.mockResolvedValue({ id: "task-1", teamId: "team-1", projectId: "project-1", isDeleted: false });
+        deps.Comment.create.mockResolvedValue({ id: "comment-1", content: "Looks good" });
 
         const result = await actionMessageServices.comment({ taskId: "task-1", userId: "user-1", content: " Looks good " }, deps);
 
@@ -188,7 +147,7 @@ describeFn("action message services", () => {
     });
 
     testFn("creates a team invitation", async () => {
-        deps.TeamInvitation.create.mockImplementation(async (payload) => ({ _id: "invite-1", ...payload }));
+        deps.TeamInvitation.create.mockImplementation(async (payload) => ({ id: "invite-1", ...payload }));
 
         const result = await actionMessageServices.inviteMembers({ teamId: "team-1", userId: "user-1", email: "NEW@EXAMPLE.COM", role: "member" }, deps);
 
@@ -198,7 +157,7 @@ describeFn("action message services", () => {
     });
 
     testFn("loads a project for editing", async () => {
-        deps.Project.findById.mockResolvedValue({ _id: "project-1", team: "team-1", name: "Core", isDeleted: false });
+        deps.Project.findById.mockResolvedValue({ id: "project-1", teamId: "team-1", name: "Core", isDeleted: false });
 
         const result = await actionMessageServices.editProject({ projectId: "project-1", userId: "user-1" }, deps);
 
@@ -206,63 +165,64 @@ describeFn("action message services", () => {
     });
 
     testFn("updates a project and logs activity", async () => {
-        const project = createDoc({ _id: "project-1", team: "team-1", name: "Core", status: "active", isDeleted: false });
+        const project = { id: "project-1", teamId: "team-1", name: "Core", status: "active", isDeleted: false };
         deps.Project.findById.mockResolvedValue(project);
+        deps.Project.update.mockResolvedValue({ ...project, name: "Core API", status: "completed" });
 
         const result = await actionMessageServices.updateProject({ projectId: "project-1", userId: "user-1", name: "Core API", status: "completed" }, deps);
 
         assert.equal(result.message, "Project \"Core API\" updated successfully.");
-        assert.equal(project.name, "Core API");
-        assert.equal(project.status, "completed");
+        assert.equal(deps.Project.update.calls[0][1].name, "Core API");
         assert.equal(deps.ActivityLog.create.calls[0][0].action, "project.updated");
     });
 
     testFn("soft deletes a project", async () => {
-        const project = createDoc({ _id: "project-1", team: "team-1", name: "Core", status: "active", isDeleted: false });
+        const project = { id: "project-1", teamId: "team-1", name: "Core", status: "active", isDeleted: false };
         deps.Project.findById.mockResolvedValue(project);
+        deps.Project.softDelete.mockResolvedValue({ ...project, isDeleted: true, status: "archived" });
 
         const result = await actionMessageServices.deleteProject({ projectId: "project-1", userId: "user-1" }, deps);
 
         assert.equal(result.message, "Project \"Core\" deleted successfully.");
-        assert.equal(project.isDeleted, true);
-        assert.equal(project.status, "archived");
+        assert.equal(deps.Project.softDelete.calls[0][0], "project-1");
     });
 
     testFn("assigns a task to a team member", async () => {
-        const task = createDoc({ _id: "task-1", team: "team-1", title: "Build API", assignedTo: [], isDeleted: false });
+        const task = { id: "task-1", teamId: "team-1", title: "Build API", assignedTo: [], isDeleted: false };
         deps.Task.findById.mockResolvedValue(task);
-        deps.TeamMembership.findOne.mockImplementation(async () => ({ role: "maintainer" }));
+        deps.TeamMembership.findForUserTeam.mockImplementation(async () => ({ role: "maintainer" }));
+        deps.Task.assign.mockResolvedValue({ ...task, assignedTo: [{ id: "user-2" }] });
 
         const result = await actionMessageServices.assignTask({ taskId: "task-1", userId: "user-1", assigneeId: "user-2" }, deps);
 
         assert.equal(result.message, "Task \"Build API\" assigned successfully.");
-        assert.deepEqual(task.assignedTo, ["user-2"]);
+        assert.equal(deps.Task.assign.calls[0][1], "user-2");
         assert.equal(deps.ActivityLog.create.calls[0][0].action, "task.assigned");
     });
 
     testFn("soft deletes a task", async () => {
-        const task = createDoc({ _id: "task-1", team: "team-1", title: "Build API", isDeleted: false });
+        const task = { id: "task-1", teamId: "team-1", title: "Build API", isDeleted: false };
         deps.Task.findById.mockResolvedValue(task);
+        deps.Task.softDelete.mockResolvedValue({ ...task, isDeleted: true });
 
         const result = await actionMessageServices.deleteTask({ taskId: "task-1", userId: "user-1" }, deps);
 
         assert.equal(result.message, "Task \"Build API\" deleted successfully.");
-        assert.equal(task.isDeleted, true);
+        assert.equal(deps.Task.softDelete.calls[0][0], "task-1");
     });
 
     testFn("changes a team member role", async () => {
-        const targetMembership = createDoc({ team: "team-1", user: "user-2", role: "member" });
         let callCount = 0;
-        deps.TeamMembership.findOne.mockImplementation(async () => {
+        deps.TeamMembership.findForUserTeam.mockImplementation(async () => {
             callCount += 1;
-            return callCount === 1 ? { role: "owner" } : targetMembership;
+            return callCount === 1 ? { role: "owner" } : { teamId: "team-1", userId: "user-2", role: "member" };
         });
+        deps.TeamMembership.updateRole.mockResolvedValue({ teamId: "team-1", userId: "user-2", role: "viewer" });
 
         const result = await actionMessageServices.changeRoles({ teamId: "team-1", userId: "user-1", memberUserId: "user-2", role: "viewer" }, deps);
 
         assert.equal(result.message, "Team member role updated successfully.");
-        assert.equal(targetMembership.role, "viewer");
+        assert.equal(deps.TeamMembership.updateRole.calls[0][0].role, "viewer");
         assert.equal(deps.ActivityLog.create.calls[0][0].action, "team.member_role_updated");
     });
 });
-

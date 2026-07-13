@@ -1,0 +1,27 @@
+<%
+const actionCatalog = [
+    { minRole: "viewer", action: "viewTasks", index: "VIEW", title: "View Tasks", text: "Inspect team or project task lanes." },
+    { minRole: "viewer", action: "comment", index: "NOTE", title: "Comment", text: "Add task-level collaboration context." },
+    { minRole: "member", action: "createTask", index: "TASK", title: "Create Task", text: "Open a project-scoped task form." },
+    { minRole: "member", action: "updateAssignedTask", index: "SYNC", title: "Update Assigned Task", text: "Move owned work through status states." },
+    { minRole: "maintainer", action: "inviteMembers", index: "JOIN", title: "Invite Members", text: "Create team invitations with scoped roles." },
+    { minRole: "maintainer", action: "createProject", index: "PROJ", title: "Create Project", text: "Provision a team-scoped project record." },
+    { minRole: "maintainer", action: "editProject", index: "EDIT", title: "Edit Project", text: "Load project metadata for review." },
+    { minRole: "maintainer", action: "deleteProject", index: "ARCH", title: "Delete Project", text: "Archive a project through service rules." },
+    { minRole: "maintainer", action: "assignTask", index: "ASGN", title: "Assign Task", text: "Attach an operator to a task." },
+    { minRole: "maintainer", action: "deleteTask", index: "DROP", title: "Delete Task", text: "Soft-delete a task with audit logging." },
+    { minRole: "admin", action: "updateProject", index: "UPDT", title: "Update Project", text: "Patch project metadata and state." },
+    { minRole: "admin", action: "changeRoles", index: "ROLE", title: "Change Roles", text: "Update team member permissions." },
+];
+const roleRank = { viewer: 0, member: 1, maintainer: 2, admin: 3 };
+const currentRank = roleRank[role] ?? roleRank.viewer;
+const visibleActions = actionCatalog.filter((item) => currentRank >= roleRank[item.minRole]);
+%>
+
+<% visibleActions.forEach((item) => { %>
+    <button class="command-action" name="action" value="<%= item.action %>">
+        <span class="command-index"><%= item.index %></span>
+        <strong><%= item.title %></strong>
+        <small><%= item.text %></small>
+    </button>
+<% }) %>

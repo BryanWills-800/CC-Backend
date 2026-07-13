@@ -1,8 +1,6 @@
-const Project = require("../models/projectModel");
-const Task = require("../models/taskModel");
-const TeamMembership = require("../models/teamMembershipModel");
+const { prismaRepositories } = require("../repositories/prismaRepositories");
 const { actionMessageServices } = require("../services/actionMessageServices");
-const { projectActionServices } = require("../services/projectActionServices");
+const { PROJECT_CREATOR_ROLES, createProjectService } = require("../services/actionMessages/createProjectServices");
 
 const ACTION_FORMS = {
     assignTask: {
@@ -40,7 +38,7 @@ const ACTION_FORMS = {
         successMessage: (project) => `Project "${project.name}" created successfully.`,
         notesTitle: "Create project service",
         notes: [
-            `Allowed roles: ${projectActionServices.creatorRoles.join(", ")}`,
+            `Allowed roles: ${PROJECT_CREATOR_ROLES.join(", ")}`,
             "Creates a project document connected to the selected team.",
             "Writes a project.created activity log with request audit context.",
         ],
@@ -137,11 +135,7 @@ const ACTION_FORMS = {
     },
 };
 
-const defaultOptionDeps = {
-    Project,
-    Task,
-    TeamMembership,
-};
+const defaultOptionDeps = prismaRepositories;
 
 const toOptionValue = (value) => String(value || "");
 
@@ -154,12 +148,10 @@ const memberLabel = (membership) => {
 const loadProjectOptions = async (teamId, deps) => {
     if (!teamId) return [];
 
-    const projects = await deps.Project
-        .find({ team: teamId, isDeleted: false })
-        .sort({ name: 1 });
+    const projects = await deps.Project.findForTeam(teamId);
 
     return projects.map((project) => ({
-        value: toOptionValue(project._id),
+        value: toOptionValue(project.id),
         label: project.name || "Unnamed project",
     }));
 }
@@ -167,12 +159,10 @@ const loadProjectOptions = async (teamId, deps) => {
 const loadTaskOptions = async (teamId, deps) => {
     if (!teamId) return [];
 
-    const tasks = await deps.Task
-        .find({ team: teamId, isDeleted: false })
-        .sort({ title: 1 });
+    const tasks = await deps.Task.findForTeam(teamId);
 
     return tasks.map((task) => ({
-        value: toOptionValue(task._id),
+        value: toOptionValue(task.id),
         label: task.title || "Untitled task",
     }));
 }
@@ -180,13 +170,10 @@ const loadTaskOptions = async (teamId, deps) => {
 const loadMemberOptions = async (teamId, deps) => {
     if (!teamId) return [];
 
-    const memberships = await deps.TeamMembership
-        .find({ team: teamId })
-        .populate("user")
-        .sort({ role: 1, joinedAt: 1 });
+    const memberships = await deps.TeamMembership.findForTeam(teamId);
 
     return memberships.map((membership) => ({
-        value: toOptionValue(membership.user && membership.user._id ? membership.user._id : membership.user),
+        value: toOptionValue(membership.user && membership.user.id ? membership.user.id : membership.userId),
         label: memberLabel(membership),
     }));
 }
@@ -245,7 +232,7 @@ const renderActionForm = (res, form, options = {}) => res
         notesTitle: form.notesTitle || "Action service notes",
         notes: form.notes || [
             "Request input is collected by the renderer.",
-            "Validation, authorization, MongoDB writes, and audit logging stay in the service layer.",
+            "Validation, authorization, PostgreSQL writes, and audit logging stay in the service layer.",
         ],
         fields: form.fields,
         values: options.values || {},
@@ -285,7 +272,7 @@ const actionRenderers = {
     renderAssignTask: async (req, res) => renderServiceAction(req, res, "assignTask", actionMessageServices.assignTask),
     renderChangeRoles: async (req, res) => renderServiceAction(req, res, "changeRoles", actionMessageServices.changeRoles),
     renderComment: async (req, res) => renderServiceAction(req, res, "comment", actionMessageServices.comment),
-    renderCreateProject: async (req, res) => renderServiceAction(req, res, "createProject", projectActionServices.createProject),
+    renderCreateProject: async (req, res) => renderServiceAction(req, res, "createProject", createProjectService),
     renderCreateTeam: async (req, res) => renderServiceAction(req, res, "createTeam", actionMessageServices.createTeam),
     renderCreateTask: async (req, res) => renderServiceAction(req, res, "createTask", actionMessageServices.createTask),
     renderDeleteProject: async (req, res) => renderServiceAction(req, res, "deleteProject", actionMessageServices.deleteProject),
@@ -299,3 +286,6 @@ const actionRenderers = {
 };
 
 module.exports = { actionRenderers };
+
+
+

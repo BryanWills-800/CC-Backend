@@ -1,6 +1,8 @@
-const bcryptjs = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const User = require("../models/userModel");
+const { prismaRepositories } = require("../repositories/prismaRepositories");
+const { hashPassword, comparePassword } = require("../utils/password");
+
+const User = prismaRepositories.User;
 
 const authCookieOptions = () => ({
     httpOnly: true,
@@ -17,119 +19,90 @@ const loginCookieOptions = () => ({
 const signup = async (req, res) => {
     try {
         const { name, email, password } = req.body;
-        const user = await User.findOne({ $or: [{ name }, { email }] });
+        const user = await User.findByNameOrEmail({ name, email });
         if (user) {
-            return res
-                .status(409)
-                .json({ message: "User already exists" });
+            return res.status(409).json({ message: "User already exists" });
         }
 
-        const salt = await bcryptjs.genSalt(10);
-        const hash = await bcryptjs.hash(password, salt);
+        await User.create({
+            name,
+            email,
+            passwordHash: await hashPassword(password),
+        });
 
-        const newUser = User({
-            name: name,
-            email: email,
-            passwordHash: hash,
-        })
-        await newUser.save()
-        res
-            .status(201)
-            .redirect("/login");
+        return res.status(201).redirect("/login");
     } catch (error) {
-        if (error.code === 11000) {
-            return res
-                .status(409)
-                .json({ message: "User already exists" });
+        if (error.code === "P2002") {
+            return res.status(409).json({ message: "User already exists" });
         }
 
-        res
-            .status(500)
-            .json({ message: error.message })
+        return res.status(500).json({ message: error.message });
     }
-}
+};
 
 const login = async (req, res) => {
     try {
         const { name, password } = req.body;
-        const user = await User.findOne({ name }).select("+passwordHash");
+        const user = await User.findByName(name);
         if (!user) {
-            return res
-                .status(404)
-                .json({ message: "User not found" });
+            return res.status(404).json({ message: "User not found" });
         }
-        const { passwordHash } = user;
-        const isPasswordValid = await bcryptjs.compare(password, passwordHash);
+
+        const isPasswordValid = await comparePassword(password, user.passwordHash);
         if (!isPasswordValid) {
-            return res
-                .status(401)
-                .json({ message: "Invalid password" });
+            return res.status(401).json({ message: "Invalid password" });
         }
 
         const payload = {
-            userId: user._id,
+            userId: user.id,
             name: user.name,
             email: user.email,
             avatarUrl: user.avatarUrl,
-        }
+        };
 
-        const loginToken = jwt.sign(
-            payload,
-            process.env.JWT_SECRET,
-            { expiresIn: "1h" }
-        )
+        const loginToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
 
-        user.isActive = true;
-        user.lastLoginAt = Date.now();
-        await user.save();
+        await User.update(user.id, {
+            isActive: true,
+            lastLoginAt: new Date(),
+        });
 
-        res.cookie("loginToken", loginToken, loginCookieOptions())
+        return res.cookie("loginToken", loginToken, loginCookieOptions())
             .status(200)
             .redirect("/team-select");
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: error.message });
     }
-}
+};
 
 const update = async (req, res) => {
     try {
         const { name, email, password, newPassword, avatarUrl } = req.body;
         const { userId } = req.user;
 
-        const user = await User.findById(userId).select("+passwordHash");
+        const user = await User.findById(userId);
         if (!user) {
-            return res
-                .status(404)
-                .json({ message: "User not found" });
+            return res.status(404).json({ message: "User not found" });
         }
 
-        const { passwordHash } = user;
-        const isPasswordValid = await bcryptjs.compare(password, passwordHash);
+        const isPasswordValid = await comparePassword(password, user.passwordHash);
         if (!isPasswordValid) {
-            return res
-                .status(401)
-                .json({ message: "Invalid password" });
+            return res.status(401).json({ message: "Invalid password" });
         }
 
-        if (name) user.name = name;
-        if (email) user.email = email;
-        if (avatarUrl) user.avatarUrl = avatarUrl;
-        if (newPassword) {
-            const salt = await bcryptjs.genSalt(10);
-            const hash = await bcryptjs.hash(newPassword, salt);
-            user.passwordHash = hash;
-        }
+        const updates = {};
+        if (name) updates.name = name;
+        if (email) updates.email = email;
+        if (avatarUrl) updates.avatarUrl = avatarUrl;
+        if (newPassword) updates.passwordHash = await hashPassword(newPassword);
 
-        await user.save();
+        await User.update(userId, updates);
 
-        res
-            .status(200)
-            .json({ message: "User updated successfully" });
-
+        return res.status(200).json({ message: "User updated successfully" });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+        return res.status(500).json({ message: error.message });
     }
-}
+};
 
 const logout = async (req, res) => {
     try {
@@ -138,12 +111,10 @@ const logout = async (req, res) => {
         if (loginToken) {
             try {
                 const decodedPayload = jwt.verify(loginToken, process.env.JWT_SECRET);
-                const { userId } = decodedPayload;
-
-                await User.findByIdAndUpdate(userId, {
+                await User.update(decodedPayload.userId, {
                     isActive: false,
-                    lastLogoutAt: Date.now()
-                })
+                    lastLogoutAt: new Date(),
+                });
             } catch (error) {
                 // Clear stale or invalid auth cookies without blocking logout.
             }
@@ -152,53 +123,36 @@ const logout = async (req, res) => {
         res.clearCookie("loginToken", authCookieOptions());
         res.clearCookie("roleToken", authCookieOptions());
 
-        res
-            .status(200)
-            .redirect("/login");
+        return res.status(200).redirect("/login");
     } catch (error) {
-        res
-            .status(500)
-            .json({ message: error.message });
+        return res.status(500).json({ message: error.message });
     }
-}
+};
 
 const deleteUser = async (req, res) => {
     try {
         const { password } = req.body;
         const { userId } = req.user;
 
-        const user = await User.findById(userId).select("+passwordHash");
+        const user = await User.findById(userId);
         if (!user) {
-            return res
-                .status(404)
-                .json({ message: "User not found" });
+            return res.status(404).json({ message: "User not found" });
         }
 
-        const isPasswordValid = await bcryptjs.compare(password, user.passwordHash);
+        const isPasswordValid = await comparePassword(password, user.passwordHash);
         if (!isPasswordValid) {
-            return res
-                .status(401)
-                .json({ message: "Invalid password" });
+            return res.status(401).json({ message: "Invalid password" });
         }
 
-        await User.findByIdAndDelete(userId)
+        await User.delete(userId);
 
         res.clearCookie("loginToken", authCookieOptions());
         res.clearCookie("roleToken", authCookieOptions());
 
-        res
-            .status(200)
-            .redirect("/login");
+        return res.status(200).redirect("/login");
     } catch (error) {
-        res
-            .status(500)
-            .json({ message: error.message });
+        return res.status(500).json({ message: error.message });
     }
-}
+};
 
 module.exports = { signup, login, update, logout, deleteUser };
-
-
-
-
-

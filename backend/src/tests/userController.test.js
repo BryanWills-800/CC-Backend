@@ -1,8 +1,12 @@
 const jwt = require("jsonwebtoken");
 
-jest.mock("../models/teamMembershipModel", () => ({
-    find: jest.fn(),
-    findOne: jest.fn(),
+jest.mock("../repositories/prismaRepositories", () => ({
+    prismaRepositories: {
+        TeamMembership: {
+            findForUser: jest.fn(),
+            findForUserTeam: jest.fn(),
+        },
+    },
 }));
 
 const {
@@ -11,17 +15,9 @@ const {
     teamSelectController,
     selectTeamController,
 } = require("../controllers/userController");
-const TeamMembership = require("../models/teamMembershipModel");
+const { prismaRepositories } = require("../repositories/prismaRepositories");
+const TeamMembership = prismaRepositories.TeamMembership;
 const { resolveMainRole } = require("../utils/roles");
-
-const createMembershipFindQuery = (memberships) => ({
-    populate: jest.fn().mockReturnThis(),
-    sort: jest.fn().mockResolvedValue(memberships),
-});
-
-const createMembershipFindOneQuery = (membership) => ({
-    populate: jest.fn().mockResolvedValue(membership),
-});
 
 describe("mainController role selection", () => {
     const OLD_ENV = process.env;
@@ -114,16 +110,15 @@ describe("mainController role selection", () => {
     });
 
     test("renders active team memberships for team selection", async () => {
-        const memberships = [
-            { role: "owner", team: { _id: "team-a", name: "Team A", description: "Alpha", isArchived: false } },
-            { role: "viewer", team: { _id: "team-b", name: "Team B", description: "Beta", isArchived: true } },
-        ];
-        TeamMembership.find.mockReturnValue(createMembershipFindQuery(memberships));
+        TeamMembership.findForUser.mockResolvedValue([
+            { role: "owner", teamId: "team-a", team: { id: "team-a", name: "Team A", description: "Alpha", isArchived: false } },
+            { role: "viewer", teamId: "team-b", team: { id: "team-b", name: "Team B", description: "Beta", isArchived: true } },
+        ]);
         const res = createResponse();
 
         await teamSelectController({ user: { userId: "user-1" } }, res);
 
-        expect(TeamMembership.find).toHaveBeenCalledWith({ user: "user-1" });
+        expect(TeamMembership.findForUser).toHaveBeenCalledWith("user-1");
         expect(res.render).toHaveBeenCalledWith("teamSelect", {
             error: null,
             teams: [expect.objectContaining({ id: "team-a", name: "Team A", role: "owner" })],
@@ -131,11 +126,11 @@ describe("mainController role selection", () => {
     });
 
     test("selecting a team stores team membership role in the roleToken JWT", async () => {
-        const membership = {
+        TeamMembership.findForUserTeam.mockResolvedValue({
             role: "maintainer",
-            team: { _id: "team-a", name: "Team A", isArchived: false },
-        };
-        TeamMembership.findOne.mockReturnValue(createMembershipFindOneQuery(membership));
+            teamId: "team-a",
+            team: { id: "team-a", name: "Team A", isArchived: false },
+        });
         const res = createResponse();
 
         await selectTeamController({
@@ -147,7 +142,7 @@ describe("mainController role selection", () => {
         const roleToken = res.cookie.mock.calls[0][1];
         const payload = jwt.verify(roleToken, process.env.JWT_SECRET);
 
-        expect(TeamMembership.findOne).toHaveBeenCalledWith({ user: "user-1", team: "team-a" });
+        expect(TeamMembership.findForUserTeam).toHaveBeenCalledWith({ userId: "user-1", teamId: "team-a" });
         expect(payload).toMatchObject({
             userId: "user-1",
             teamId: "team-a",
@@ -156,9 +151,79 @@ describe("mainController role selection", () => {
         });
         expect(res.redirect).toHaveBeenCalledWith("/main");
     });
+
+    test("teamSelectController renders database errors", async () => {
+        TeamMembership.findForUser.mockRejectedValue(new Error("database offline"));
+        const res = createResponse();
+
+        await teamSelectController({ user: { userId: "user-1" } }, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.render).toHaveBeenCalledWith("teamSelect", { teams: [], error: "database offline" });
+    });
+
+    test("selectTeamController rejects empty team selection", async () => {
+        TeamMembership.findForUser.mockResolvedValue([
+            { role: "owner", teamId: "team-a", team: { id: "team-a", name: "Team A", isArchived: false } },
+        ]);
+        const res = createResponse();
+
+        await selectTeamController({ user: { userId: "user-1" }, body: {} }, res);
+
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.render).toHaveBeenCalledWith("teamSelect", {
+            teams: [expect.objectContaining({ id: "team-a", name: "Team A" })],
+            error: "Please choose a team to continue.",
+        });
+    });
+
+    test("selectTeamController rejects archived or missing selected memberships", async () => {
+        TeamMembership.findForUserTeam.mockResolvedValue({
+            role: "member",
+            teamId: "team-a",
+            team: { id: "team-a", name: "Team A", isArchived: true },
+        });
+        TeamMembership.findForUser.mockResolvedValue([
+            { role: "viewer", teamId: "team-b", team: { id: "team-b", name: "Team B", isArchived: false } },
+        ]);
+        const res = createResponse();
+
+        await selectTeamController({ user: { userId: "user-1" }, body: { teamId: "team-a" } }, res);
+
+        expect(res.status).toHaveBeenCalledWith(403);
+        expect(res.render).toHaveBeenCalledWith("teamSelect", {
+            teams: [expect.objectContaining({ id: "team-b", name: "Team B" })],
+            error: "You are not a member of that team.",
+        });
+    });
+
+    test("selectTeamController renders lookup errors", async () => {
+        TeamMembership.findForUserTeam.mockRejectedValue(new Error("lookup failed"));
+        const res = createResponse();
+
+        await selectTeamController({ user: { userId: "user-1" }, body: { teamId: "team-a" } }, res);
+
+        expect(res.status).toHaveBeenCalledWith(500);
+        expect(res.render).toHaveBeenCalledWith("teamSelect", { teams: [], error: "lookup failed" });
+    });
+
+    test("selectTeamController marks role cookie secure in production", async () => {
+        process.env.NODE_ENV = "production";
+        TeamMembership.findForUserTeam.mockResolvedValue({
+            role: "owner",
+            teamId: "team-a",
+            team: { id: "team-a", name: "Team A", isArchived: false },
+        });
+        const res = createResponse();
+
+        await selectTeamController({ user: { userId: "user-1" }, body: { teamId: "team-a" } }, res);
+
+        expect(res.cookie.mock.calls[0][2]).toEqual(expect.objectContaining({
+            httpOnly: true,
+            secure: true,
+            sameSite: "strict",
+            path: "/",
+            maxAge: 3600000,
+        }));
+    });
 });
-
-
-
-
-

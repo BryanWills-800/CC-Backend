@@ -60,4 +60,35 @@ const activityLogSchema = new mongoose.Schema(
 activityLogSchema.index({ team: 1, createdAt: -1 });
 activityLogSchema.index({ actor: 1, createdAt: -1 });
 
-module.exports = mongoose.model("ActivityLog", activityLogSchema);
+const ActivityLog = mongoose.model("ActivityLog", activityLogSchema);
+const eventBuffer = [];
+
+ActivityLog.flushEvents = async () => {
+  if (!eventBuffer.length) return;
+
+  const events = eventBuffer.splice(0, eventBuffer.length);
+
+  try {
+    await ActivityLog.insertMany(events);
+  } catch (error) {
+    console.error("Failed to flush activity events", error);
+  }
+};
+
+ActivityLog.addEvent = (event) => {
+  eventBuffer.push({
+    ...event,
+    createdAt: event.createdAt || new Date(),
+  });
+
+  if (eventBuffer.length >= 20) {
+    return ActivityLog.flushEvents();
+  }
+
+  return null;
+};
+
+const flushInterval = setInterval(ActivityLog.flushEvents, 5000);
+if (typeof flushInterval.unref === "function") flushInterval.unref();
+
+module.exports = ActivityLog;

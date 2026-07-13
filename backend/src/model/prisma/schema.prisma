@@ -1,0 +1,291 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TeamRole {
+  owner
+  maintainer
+  member
+  viewer
+}
+
+enum ProjectStatus {
+  active
+  on_hold
+  completed
+  archived
+}
+
+enum TaskStatus {
+  todo
+  in_progress
+  blocked
+  review
+  done
+}
+
+enum TaskPriority {
+  low
+  medium
+  high
+  urgent
+}
+
+enum InvitationStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
+enum ActivityAction {
+  team_created             @map("team.created")
+  team_joined              @map("team.joined")
+  team_member_invited      @map("team.member_invited")
+  team_member_role_updated @map("team.member_role_updated")
+  project_created          @map("project.created")
+  project_updated          @map("project.updated")
+  project_deleted          @map("project.deleted")
+  task_created             @map("task.created")
+  task_updated             @map("task.updated")
+  task_assigned            @map("task.assigned")
+  task_deleted             @map("task.deleted")
+  comment_created          @map("comment.created")
+  comment_updated          @map("comment.updated")
+  comment_deleted          @map("comment.deleted")
+}
+
+enum ActivityEntityType {
+  team
+  project
+  task
+  comment
+  user
+}
+
+model User {
+  id           String    @id @default(cuid())
+  name         String    @db.VarChar(80)
+  email        String    @unique @db.VarChar(255)
+  passwordHash String
+  avatarUrl    String?
+  authProvider String    @default("local")
+  isActive     Boolean   @default(false)
+  lastLoginAt  DateTime?
+  lastLogoutAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  createdTeams       Team[]           @relation("TeamCreatedBy")
+  memberships        TeamMembership[]
+  invitedMemberships TeamMembership[] @relation("MembershipInvitedBy")
+  createdProjects    Project[]        @relation("ProjectCreatedBy")
+  updatedProjects    Project[]        @relation("ProjectUpdatedBy")
+  createdTasks       Task[]           @relation("TaskCreatedBy")
+  updatedTasks       Task[]           @relation("TaskUpdatedBy")
+  assignedTasks      Task[]           @relation("TaskAssignees")
+  comments           Comment[]
+  invitations        TeamInvitation[]
+  activityLogs       ActivityLog[]
+  refreshTokens      RefreshToken[]
+  tokens             Token[]
+
+  @@index([email])
+  @@map("users")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String   @db.VarChar(120)
+  description String   @default("") @db.VarChar(1000)
+  slug        String   @unique @db.VarChar(160)
+  createdById String
+  isArchived  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy    User             @relation("TeamCreatedBy", fields: [createdById], references: [id])
+  memberships  TeamMembership[]
+  projects     Project[]
+  tasks        Task[]
+  comments     Comment[]
+  invitations  TeamInvitation[]
+  activityLogs ActivityLog[]
+
+  @@index([createdById])
+  @@index([slug])
+  @@map("teams")
+}
+
+model TeamMembership {
+  id          String   @id @default(cuid())
+  teamId      String
+  userId      String
+  role        TeamRole @default(member)
+  joinedAt    DateTime @default(now())
+  invitedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team      Team  @relation(fields: [teamId], references: [id])
+  user      User  @relation(fields: [userId], references: [id])
+  invitedBy User? @relation("MembershipInvitedBy", fields: [invitedById], references: [id])
+
+  @@unique([teamId, userId])
+  @@index([userId, role])
+  @@map("team_memberships")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  teamId      String
+  name        String        @db.VarChar(160)
+  description String        @default("") @db.VarChar(3000)
+  status      ProjectStatus @default(active)
+  createdById String
+  updatedById String?
+  dueDate     DateTime?
+  isDeleted   Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  team      Team      @relation(fields: [teamId], references: [id])
+  createdBy User      @relation("ProjectCreatedBy", fields: [createdById], references: [id])
+  updatedBy User?     @relation("ProjectUpdatedBy", fields: [updatedById], references: [id])
+  tasks     Task[]
+  comments  Comment[]
+
+  @@index([teamId, name])
+  @@index([teamId, status])
+  @@map("projects")
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  teamId      String
+  projectId   String
+  title       String       @db.VarChar(200)
+  description String       @default("") @db.VarChar(5000)
+  status      TaskStatus   @default(todo)
+  priority    TaskPriority @default(medium)
+  createdById String
+  updatedById String?
+  dueDate     DateTime?
+  completedAt DateTime?
+  isDeleted   Boolean      @default(false)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  team       Team      @relation(fields: [teamId], references: [id])
+  project    Project   @relation(fields: [projectId], references: [id])
+  assignedTo User[]    @relation("TaskAssignees")
+  createdBy  User      @relation("TaskCreatedBy", fields: [createdById], references: [id])
+  updatedBy  User?     @relation("TaskUpdatedBy", fields: [updatedById], references: [id])
+  comments   Comment[]
+
+  @@index([projectId, status, priority])
+  @@index([teamId, status])
+  @@map("tasks")
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  teamId    String
+  projectId String
+  taskId    String
+  content   String    @db.VarChar(3000)
+  authorId  String
+  editedAt  DateTime?
+  isDeleted Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  team    Team    @relation(fields: [teamId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+  task    Task    @relation(fields: [taskId], references: [id])
+  author  User    @relation(fields: [authorId], references: [id])
+
+  @@index([taskId, createdAt])
+  @@map("comments")
+}
+
+model TeamInvitation {
+  id          String           @id @default(cuid())
+  teamId      String
+  email       String           @db.VarChar(255)
+  role        TeamRole         @default(member)
+  tokenHash   String
+  invitedById String
+  status      InvitationStatus @default(pending)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  team      Team @relation(fields: [teamId], references: [id])
+  invitedBy User @relation(fields: [invitedById], references: [id])
+
+  @@index([teamId, email, status])
+  @@map("team_invitations")
+}
+
+model ActivityLog {
+  id         String             @id @default(cuid())
+  teamId     String
+  actorId    String
+  action     ActivityAction
+  entityType ActivityEntityType
+  entityId   String
+  metadata   Json               @default("{}")
+  ipAddress  String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  team  Team @relation(fields: [teamId], references: [id])
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([teamId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([entityId])
+  @@map("activity_logs")
+}
+
+model RefreshToken {
+  id                String    @id @default(cuid())
+  userId            String
+  tokenHash         String    @unique
+  family            String?
+  userAgent         String?
+  ipAddress         String?
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  replacedByTokenId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model Token {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String
+  type      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, tokenHash])
+  @@map("tokens")
+}

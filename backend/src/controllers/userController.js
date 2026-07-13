@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const TeamMembership = require("../models/teamMembershipModel");
+const { prismaRepositories } = require("../repositories/prismaRepositories");
 const { resolveMainRole } = require("../utils/roles");
 
 const getResolvedRole = (req) => {
@@ -24,7 +24,7 @@ const buildTeamOption = (membership) => {
     const team = membership.team || {};
 
     return {
-        id: String(team._id || membership.team),
+        id: String(team.id || membership.teamId),
         name: team.name || "Unnamed team",
         description: team.description || "Team workspace",
         role: membership.role,
@@ -32,14 +32,9 @@ const buildTeamOption = (membership) => {
     };
 }
 
-const findUserMemberships = async (userId) => TeamMembership
-    .find({ user: userId })
-    .populate("team")
-    .sort({ joinedAt: -1 });
+const findUserMemberships = async (userId) => prismaRepositories.TeamMembership.findForUser(userId);
 
-const findSelectedMembership = async ({ userId, teamId }) => TeamMembership
-    .findOne({ user: userId, team: teamId })
-    .populate("team");
+const findSelectedMembership = async ({ userId, teamId }) => prismaRepositories.TeamMembership.findForUserTeam({ userId, teamId });
 
 const consolePages = {
     overview: {
@@ -162,12 +157,12 @@ const consolePages = {
         metrics: [
             { label: "Controller", value: "Switch", text: "Only dispatches the selected action." },
             { label: "Renderer", value: "Forms", text: "Extracts input and renders success or error states." },
-            { label: "Service", value: "Mongo", text: "Owns validation, authorization, persistence, and audit logging." },
+            { label: "Service", value: "Prisma", text: "Owns validation, authorization, persistence, and audit logging." },
         ],
         panels: [
             { title: "Action Controller", tag: "CTRL", text: "Keeps the action switch thin and predictable." },
             { title: "Action Renderers", tag: "VIEW", text: "Provide shared forms and response rendering." },
-            { title: "Action Services", tag: "SVC", text: "Use injected dependencies in tests and Mongoose models in runtime." },
+            { title: "Action Services", tag: "SVC", text: "Use injected dependencies in tests and Prisma repositories in runtime." },
         ],
     },
     settings: {
@@ -243,7 +238,7 @@ const selectTeamController = async (req, res) => {
 
         const rolePayload = {
             userId: req.user.userId,
-            teamId: String(membership.team._id),
+            teamId: String(membership.team.id),
             teamName: membership.team.name,
             role: membership.role,
         };
@@ -298,6 +293,8 @@ module.exports = {
     notesController: renderConsolePage("notes"),
     settingsController: renderConsolePage("settings"),
 };
+
+
 
 
 

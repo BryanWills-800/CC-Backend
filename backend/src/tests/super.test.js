@@ -5,9 +5,17 @@ const testsDir = __dirname;
 const expectedTestFiles = [
     "actionController.test.js",
     "actionMessageServices.test.js",
+    "activityLogModel.test.js",
     "auth.test.js",
+    "commandButtons.test.js",
     "createProject.test.js",
-    "dbConnect.test.js",
+    "middleware.test.js",
+    "password.test.js",
+    "projectServices.test.js",
+    "roles.test.js",
+    "sharedHelpers.test.js",
+    "taskServices.test.js",
+    "teamServices.test.js",
     "userController.test.js",
 ];
 

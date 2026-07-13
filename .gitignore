@@ -8,4 +8,8 @@ audit-reports/
 stitch/
 comprehensive.md
 backend/src/models/user-login-details.md
+backend/imp-local-md-files/
+backend/permissions.js
+backend/userModel_old.js
+backend/src/backend/src/tests
 

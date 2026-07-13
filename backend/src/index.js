@@ -4,12 +4,11 @@ const dotenv = require('dotenv');
 const morgan = require('morgan');
 const expressLayouts = require('express-ejs-layouts');
 const cookieParser = require('cookie-parser');
-const dbConnect = require('./config/dbConnect');
+const { prismaConnect } = require('./config/prismaConnect');
 dotenv.config({ path: path.join(__dirname, '../.env') });
 const authRoutes = require("./routes/authRoutes");
 const contentRoutes = require("./routes/contentRoutes");
 const uiRoutes = require("./routes/uiRoutes");
-const buttonRoutes = require("./routes/buttonRoutes");
 // const { permissions, checkPermissions } = require("./permissions");
 
 const app = express();
@@ -34,13 +33,12 @@ app.set("views", [
 app.use("/api/auth", authRoutes);
 app.use("/api/content", contentRoutes);
 app.use("/", uiRoutes);
-// app.use("/buttons", buttonRoutes);
 
 
 // Start the Server
 const port = process.env.PORT || 3000;
 const startServer = async () => {
-    await dbConnect();
+    await prismaConnect();
 
     app.listen(port, () => {
         console.log(`Server is running on URL http://localhost:${port}`);
@@ -48,3 +46,5 @@ const startServer = async () => {
 }
 
 startServer();
+
+

@@ -1,0 +1,25 @@
+services:
+  postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    image: rafc-postgres:local
+    container_name: rafc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_postgres_password}
+      POSTGRES_DB: ${POSTGRES_DB:-rafc}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - rafc_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rafc}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rafc_pgdata:
+
