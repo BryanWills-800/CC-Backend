@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { prismaRepositories } = require("../repositories/prismaRepositories");
+const { prismaRepositories } = require("../db/prismaRepositories");
 const { hashPassword, comparePassword } = require("../utils/password");
 
 const User = prismaRepositories.User;
@@ -156,3 +156,4 @@ const deleteUser = async (req, res) => {
 };
 
 module.exports = { signup, login, update, logout, deleteUser };
+

@@ -1,6 +1,6 @@
 const jwt = require("jsonwebtoken");
 
-jest.mock("../repositories/prismaRepositories", () => ({
+jest.mock("../db/prismaRepositories", () => ({
     prismaRepositories: {
         TeamMembership: {
             findForUser: jest.fn(),
@@ -15,7 +15,7 @@ const {
     teamSelectController,
     selectTeamController,
 } = require("../controllers/userController");
-const { prismaRepositories } = require("../repositories/prismaRepositories");
+const { prismaRepositories } = require("../db/prismaRepositories");
 const TeamMembership = prismaRepositories.TeamMembership;
 const { resolveMainRole } = require("../utils/roles");
 
@@ -227,3 +227,4 @@ describe("mainController role selection", () => {
         }));
     });
 });
+

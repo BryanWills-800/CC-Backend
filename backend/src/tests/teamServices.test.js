@@ -2,7 +2,7 @@ const {
     changeRolesService,
     createTeamService,
     inviteMembersService,
-} = require("../services/actionMessages/teamServices");
+} = require("../services/actions/teamServices");
 const { createActionDeps, primeTeam } = require("./serviceTestUtils");
 
 describe("team action services edge cases", () => {
@@ -120,3 +120,4 @@ describe("team action services edge cases", () => {
         }));
     });
 });
+

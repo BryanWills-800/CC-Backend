@@ -2,7 +2,7 @@ const {
     changeRolesService,
     createTeamService,
     inviteMembersService,
-} = require("./actionMessages/teamServices");
+} = require("./actions/teamServices");
 const {
     assignTaskService,
     commentService,
@@ -10,12 +10,12 @@ const {
     deleteTaskService,
     updateAssignedTaskService,
     viewTasksService,
-} = require("./actionMessages/taskServices");
+} = require("./actions/taskServices");
 const {
     deleteProjectService,
     editProjectService,
     updateProjectService,
-} = require("./actionMessages/projectServices");
+} = require("./actions/projectServices");
 
 const actionMessageServices = {
     assignTask: assignTaskService,
@@ -33,3 +33,4 @@ const actionMessageServices = {
 };
 
 module.exports = { actionMessageServices };
+

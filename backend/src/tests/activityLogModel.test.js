@@ -1,12 +1,12 @@
 const mockActivityLogCreate = jest.fn();
 
-jest.mock("../config/prismaConnect", () => ({
+jest.mock("../db/prismaConnect", () => ({
     getPrismaClient: () => ({
         activityLog: { create: mockActivityLogCreate },
     }),
 }));
 
-const { prismaRepositories } = require("../repositories/prismaRepositories");
+const { prismaRepositories } = require("../db/prismaRepositories");
 
 describe("ActivityLog Prisma repository", () => {
     beforeEach(() => {
@@ -46,3 +46,4 @@ describe("ActivityLog Prisma repository", () => {
         expect(mockActivityLogCreate.mock.calls[0][0].data.action).toBe("task_created");
     });
 });
+

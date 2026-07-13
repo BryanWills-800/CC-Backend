@@ -4,7 +4,7 @@ const dotenv = require('dotenv');
 const morgan = require('morgan');
 const expressLayouts = require('express-ejs-layouts');
 const cookieParser = require('cookie-parser');
-const { prismaConnect } = require('./config/prismaConnect');
+const { prismaConnect } = require('./db/prismaConnect');
 dotenv.config({ path: path.join(__dirname, '../.env') });
 const authRoutes = require("./routes/authRoutes");
 const contentRoutes = require("./routes/contentRoutes");
@@ -46,5 +46,6 @@ const startServer = async () => {
 }
 
 startServer();
+
 
 

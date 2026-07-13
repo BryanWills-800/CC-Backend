@@ -7,9 +7,9 @@
     "test": "jest",
     "postgres:up": "docker compose up -d postgres",
     "postgres:down": "docker compose down",
-    "prisma:modelcopy:validate": "prisma validate --config backend/src/model/prisma/prisma.config.js --schema backend/src/model/prisma/schema.prisma",
-    "prisma:modelcopy:generate": "prisma generate --config backend/src/model/prisma/prisma.config.js --schema backend/src/model/prisma/schema.prisma",
-    "prisma:modelcopy:push": "prisma db push --config backend/src/model/prisma/prisma.config.js --schema backend/src/model/prisma/schema.prisma"
+    "prisma:modelcopy:validate": "prisma validate --config backend/src/db/prisma/prisma.config.js --schema backend/src/db/prisma/schema.prisma",
+    "prisma:modelcopy:generate": "prisma generate --config backend/src/db/prisma/prisma.config.js --schema backend/src/db/prisma/schema.prisma",
+    "prisma:modelcopy:push": "prisma db push --config backend/src/db/prisma/prisma.config.js --schema backend/src/db/prisma/schema.prisma"
   },
   "keywords": [],
   "author": "",
@@ -39,3 +39,5 @@
     "supertest": "^7.2.2"
   }
 }
+
+

@@ -9,7 +9,7 @@ const {
     createProjectService,
     normalizeProjectInput,
     validateProjectInput,
-} = require("../services/actionMessages/createProjectServices");
+} = require("../services/actions/createProjectServices");
 const { createActionDeps } = require("./serviceTestUtils");
 
 describeFn("createProject service", () => {
@@ -112,3 +112,4 @@ describeFn("createProject service", () => {
         assert.equal(deps.Project.create.calls.length, 0);
     });
 });
+

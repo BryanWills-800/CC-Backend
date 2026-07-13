@@ -5,7 +5,7 @@ const {
     deleteTaskService,
     updateAssignedTaskService,
     viewTasksService,
-} = require("../services/actionMessages/taskServices");
+} = require("../services/actions/taskServices");
 const { createActionDeps, primeTeam } = require("./serviceTestUtils");
 
 describe("task action services edge cases", () => {
@@ -154,3 +154,4 @@ describe("task action services edge cases", () => {
         expect(deps.ActivityLog.create.calls[0][0].action).toBe("task.deleted");
     });
 });
+

@@ -1,4 +1,4 @@
-const { getPrismaClient } = require("../config/prismaConnect");
+const { getPrismaClient } = require("./prismaConnect");
 
 const ACTIVITY_ACTIONS = {
     "team.created": "team_created",
@@ -107,3 +107,6 @@ const prismaRepositories = {
 };
 
 module.exports = { getId, prismaRepositories };
+
+
+

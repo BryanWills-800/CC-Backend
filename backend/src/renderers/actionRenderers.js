@@ -1,6 +1,6 @@
-const { prismaRepositories } = require("../repositories/prismaRepositories");
+const { prismaRepositories } = require("../db/prismaRepositories");
 const { actionMessageServices } = require("../services/actionMessageServices");
-const { PROJECT_CREATOR_ROLES, createProjectService } = require("../services/actionMessages/createProjectServices");
+const { PROJECT_CREATOR_ROLES, createProjectService } = require("../services/actions/createProjectServices");
 
 const ACTION_FORMS = {
     assignTask: {
@@ -286,6 +286,8 @@ const actionRenderers = {
 };
 
 module.exports = { actionRenderers };
+
+
 
 
 

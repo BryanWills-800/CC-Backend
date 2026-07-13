@@ -1,4 +1,4 @@
-const { prismaRepositories } = require("../../repositories/prismaRepositories");
+const { prismaRepositories } = require("../../db/prismaRepositories");
 
 const TEAM_MEMBER_ROLES = ["owner", "maintainer", "member", "viewer"];
 const TASK_CREATOR_ROLES = ["owner", "maintainer", "member"];
@@ -110,5 +110,6 @@ module.exports = {
     normalizeDate,
     normalizeText,
 };
+
 
 

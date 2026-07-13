@@ -12,7 +12,7 @@ const {
     logActivity,
     normalizeDate,
     normalizeText,
-} = require("../services/actionMessages/shared");
+} = require("../services/actions/shared");
 const { createActionDeps } = require("./serviceTestUtils");
 
 describe("action shared helpers", () => {
@@ -149,5 +149,6 @@ describe("action shared helpers", () => {
         expect(deps.ActivityLog.create.calls[0][0]).toEqual(expect.objectContaining({ ipAddress: null }));
     });
 });
+
 
 

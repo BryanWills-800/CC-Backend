@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { prismaRepositories } = require("../repositories/prismaRepositories");
+const { prismaRepositories } = require("../db/prismaRepositories");
 const { resolveMainRole } = require("../utils/roles");
 
 const getResolvedRole = (req) => {
@@ -293,6 +293,7 @@ module.exports = {
     notesController: renderConsolePage("notes"),
     settingsController: renderConsolePage("settings"),
 };
+
 
 
 

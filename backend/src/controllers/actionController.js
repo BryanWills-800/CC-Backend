@@ -1,4 +1,4 @@
-const { actionRenderers } = require("../helpers/actionRenderers");
+const { actionRenderers } = require("../renderers/actionRenderers");
 
 const actionController = async (req, res) => {
     const action = (req.body && req.body.action) || (req.query && req.query.action);
@@ -49,4 +49,5 @@ const actionController = async (req, res) => {
 }
 
 module.exports = { actionController };
+
 

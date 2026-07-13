@@ -9,7 +9,7 @@ jest.mock("bcryptjs", () => ({
     hash: jest.fn(),
 }));
 
-jest.mock("../repositories/prismaRepositories", () => ({
+jest.mock("../db/prismaRepositories", () => ({
     prismaRepositories: {
         User: {
             findByNameOrEmail: jest.fn(),
@@ -23,7 +23,7 @@ jest.mock("../repositories/prismaRepositories", () => ({
 }));
 
 const bcryptjs = require("bcryptjs");
-const { prismaRepositories } = require("../repositories/prismaRepositories");
+const { prismaRepositories } = require("../db/prismaRepositories");
 const User = prismaRepositories.User;
 const authRoutes = require("../routes/authRoutes");
 const { authenticateUser, authorizeUserRole } = require("../middlewares/authMiddleware");
@@ -361,3 +361,4 @@ describe("auth middleware", () => {
         expect(next).not.toHaveBeenCalled();
     });
 });
+

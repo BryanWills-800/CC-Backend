@@ -2,7 +2,7 @@ const {
     deleteProjectService,
     editProjectService,
     updateProjectService,
-} = require("../services/actionMessages/projectServices");
+} = require("../services/actions/projectServices");
 const { createActionDeps, primeTeam } = require("./serviceTestUtils");
 
 describe("project action services edge cases", () => {
@@ -86,3 +86,4 @@ describe("project action services edge cases", () => {
         }));
     });
 });
+

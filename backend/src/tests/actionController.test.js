@@ -1,4 +1,4 @@
-jest.mock("../services/actionMessages/createProjectServices", () => ({
+jest.mock("../services/actions/createProjectServices", () => ({
     PROJECT_CREATOR_ROLES: ["owner", "maintainer"],
     createProjectService: jest.fn(),
 }));
@@ -26,7 +26,7 @@ const request = require("supertest");
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 const { actionController } = require("../controllers/actionController");
-const { createProjectService } = require("../services/actionMessages/createProjectServices");
+const { createProjectService } = require("../services/actions/createProjectServices");
 const { actionMessageServices } = require("../services/actionMessageServices");
 const contentRoutes = require("../routes/contentRoutes");
 
@@ -195,6 +195,7 @@ describe("actionController", () => {
         expect(response.text).toBe("Unknown action");
     });
 });
+
 
 
 
