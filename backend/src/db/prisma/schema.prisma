@@ -92,7 +92,6 @@ model User {
   invitations        TeamInvitation[]
   activityLogs       ActivityLog[]
   refreshTokens      RefreshToken[]
-  tokens             Token[]
 
   @@index([email])
   @@map("users")
@@ -259,33 +258,16 @@ model RefreshToken {
   userId            String
   tokenHash         String    @unique
   family            String?
-  userAgent         String?
-  ipAddress         String?
   expiresAt         DateTime
   revokedAt         DateTime?
   replacedByTokenId String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([family])
   @@map("refresh_tokens")
-}
-
-model Token {
-  id        String    @id @default(cuid())
-  userId    String
-  tokenHash String
-  type      String
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId, tokenHash])
-  @@map("tokens")
 }

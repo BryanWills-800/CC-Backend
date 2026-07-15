@@ -25,7 +25,6 @@ const userModel = {
         "comments Comment[]",
         "activityLogs ActivityLog[]",
         "refreshTokens RefreshToken[]",
-        "tokens Token[]",
     ],
     indexes: ["@@index([email])"],
 };

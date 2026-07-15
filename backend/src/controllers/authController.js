@@ -1,20 +1,21 @@
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { prismaRepositories } = require("../db/prismaRepositories");
+const {
+    clearAuthCookies,
+    buildAuthPayload,
+    loginCookieOptions,
+    refreshCookieOptions,
+    revokePresentedRefreshFamily,
+    rotateRefreshToken,
+    setAuthCookies,
+    signAccessToken,
+    signRefreshToken,
+    storeRefreshToken,
+} = require("../utils/authTokens");
 const { hashPassword, comparePassword } = require("../utils/password");
 
 const User = prismaRepositories.User;
-
-const authCookieOptions = () => ({
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-});
-
-const loginCookieOptions = () => ({
-    ...authCookieOptions(),
-    maxAge: 3600000,
-});
 
 const signup = async (req, res) => {
     try {
@@ -53,25 +54,43 @@ const login = async (req, res) => {
             return res.status(401).json({ message: "Invalid password" });
         }
 
-        const payload = {
-            userId: user.id,
-            name: user.name,
-            email: user.email,
-            avatarUrl: user.avatarUrl,
-        };
+        const payload = buildAuthPayload(user);
+        const family = crypto.randomUUID();
+        const accessToken = signAccessToken(payload);
+        const refreshToken = signRefreshToken({ payload, family });
 
-        const loginToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
-
+        await storeRefreshToken({ userId: user.id, refreshToken, family });
         await User.update(user.id, {
             isActive: true,
             lastLoginAt: new Date(),
         });
 
-        return res.cookie("loginToken", loginToken, loginCookieOptions())
+        return res
+            .cookie("loginToken", accessToken, loginCookieOptions())
+            .cookie("refreshToken", refreshToken, refreshCookieOptions())
             .status(200)
             .redirect("/team-select");
     } catch (error) {
         return res.status(500).json({ message: error.message });
+    }
+};
+
+const refresh = async (req, res) => {
+    const presentedRefreshToken = req.cookies && req.cookies.refreshToken;
+
+    try {
+        const session = await rotateRefreshToken(presentedRefreshToken);
+
+        return setAuthCookies({
+            res,
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken,
+        })
+            .status(200)
+            .json({ message: "Token refreshed" });
+    } catch (error) {
+        clearAuthCookies(res);
+        return res.status(error.statusCode || 401).json({ message: error.message || "Invalid or expired refresh token" });
     }
 };
 
@@ -107,6 +126,11 @@ const update = async (req, res) => {
 const logout = async (req, res) => {
     try {
         const loginToken = req.cookies && req.cookies.loginToken;
+        const refreshToken = req.cookies && req.cookies.refreshToken;
+
+        if (refreshToken) {
+            await revokePresentedRefreshFamily(refreshToken);
+        }
 
         if (loginToken) {
             try {
@@ -116,13 +140,11 @@ const logout = async (req, res) => {
                     lastLogoutAt: new Date(),
                 });
             } catch (error) {
-                // Clear stale or invalid auth cookies without blocking logout.
+                console.log("Error while logging out:", error);
             }
         }
 
-        res.clearCookie("loginToken", authCookieOptions());
-        res.clearCookie("roleToken", authCookieOptions());
-
+        clearAuthCookies(res);
         return res.status(200).redirect("/login");
     } catch (error) {
         return res.status(500).json({ message: error.message });
@@ -133,6 +155,7 @@ const deleteUser = async (req, res) => {
     try {
         const { password } = req.body;
         const { userId } = req.user;
+        const refreshToken = req.cookies && req.cookies.refreshToken;
 
         const user = await User.findById(userId);
         if (!user) {
@@ -144,16 +167,17 @@ const deleteUser = async (req, res) => {
             return res.status(401).json({ message: "Invalid password" });
         }
 
+        if (refreshToken) {
+            await revokePresentedRefreshFamily(refreshToken);
+        }
+
         await User.delete(userId);
 
-        res.clearCookie("loginToken", authCookieOptions());
-        res.clearCookie("roleToken", authCookieOptions());
-
+        clearAuthCookies(res);
         return res.status(200).redirect("/login");
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
 };
 
-module.exports = { signup, login, update, logout, deleteUser };
-
+module.exports = { signup, login, refresh, update, logout, deleteUser };

@@ -1,17 +1,37 @@
 const jwt = require("jsonwebtoken");
+const { clearAuthCookies, rotateRefreshToken, setAuthCookies } = require("../utils/authTokens");
 
-const authenticateUser = (req, res, next) => {
+const authenticateUser = async (req, res, next) => {
     const loginToken = req.cookies && req.cookies.loginToken;
 
-    if (!loginToken) {
-        return res.status(401).json({ message: "Authentication required" });
+    if (loginToken) {
+        try {
+            req.user = jwt.verify(loginToken, process.env.JWT_SECRET);
+            return next();
+        } catch (error) {
+            // Fall through to refresh-token rotation below.
+        }
+    }
+
+    const refreshToken = req.cookies && req.cookies.refreshToken;
+    if (!refreshToken) {
+        return res.status(401).json({ message: loginToken ? "Invalid or expired login token" : "Authentication required" });
     }
 
     try {
-        req.user = jwt.verify(loginToken, process.env.JWT_SECRET);
+        const session = await rotateRefreshToken(refreshToken);
+
+        setAuthCookies({
+            res,
+            accessToken: session.accessToken,
+            refreshToken: session.refreshToken,
+        });
+
+        req.user = session.payload;
         return next();
     } catch (error) {
-        return res.status(401).json({ message: "Invalid or expired login token" });
+        clearAuthCookies(res);
+        return res.status(error.statusCode || 401).json({ message: error.message || "Invalid or expired refresh token" });
     }
 };
 

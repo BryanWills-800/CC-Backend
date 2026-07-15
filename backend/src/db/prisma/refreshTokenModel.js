@@ -6,16 +6,15 @@ const refreshTokenModel = {
         userId: "String",
         tokenHash: "String @unique",
         family: "String?",
-        userAgent: "String?",
-        ipAddress: "String?",
         expiresAt: "DateTime",
         revokedAt: "DateTime?",
         replacedByTokenId: "String?",
         createdAt: "DateTime @default(now())",
         updatedAt: "DateTime @updatedAt",
     },
-    relations: ["user User @relation(fields: [userId], references: [id])"],
-    indexes: ["@@index([userId])", "@@index([expiresAt])"],
+    relations: ["user User @relation(fields: [userId], references: [id], onDelete: Cascade)"],
+    indexes: ["@@index([userId])", "@@index([expiresAt])", "@@index([family])"],
 };
 
 module.exports = refreshTokenModel;
+

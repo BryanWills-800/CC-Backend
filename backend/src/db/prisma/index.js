@@ -6,7 +6,6 @@ const taskModel = require("./taskModel");
 const teamInvitationModel = require("./teamInvitationModel");
 const teamMembershipModel = require("./teamMembershipModel");
 const teamModel = require("./teamModel");
-const tokenModel = require("./tokenModel");
 const userModel = require("./userModel");
 
 const prismaModelCopy = {
@@ -18,7 +17,6 @@ const prismaModelCopy = {
     teamInvitationModel,
     teamMembershipModel,
     teamModel,
-    tokenModel,
     userModel,
 };
 

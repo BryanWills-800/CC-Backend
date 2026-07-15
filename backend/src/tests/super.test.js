@@ -12,6 +12,7 @@ const expectedTestFiles = [
     "middleware.test.js",
     "password.test.js",
     "projectServices.test.js",
+    "refreshTokenRepositories.test.js",
     "roles.test.js",
     "sharedHelpers.test.js",
     "taskServices.test.js",

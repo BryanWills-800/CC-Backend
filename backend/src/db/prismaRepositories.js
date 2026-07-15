@@ -29,6 +29,39 @@ const prismaRepositories = {
         update: (id, data) => getPrisma().user.update({ where: { id }, data }),
         delete: (id) => getPrisma().user.delete({ where: { id } }),
     },
+    RefreshToken: {
+        create: (data) => getPrisma().refreshToken.create({ data }),
+        findByTokenHash: (tokenHash) => getPrisma().refreshToken.findUnique({ where: { tokenHash } }),
+        revoke: (id, revokedAt = new Date()) => getPrisma().refreshToken.update({ where: { id }, data: { revokedAt } }),
+        revokeFamily: (family, revokedAt = new Date()) => getPrisma().refreshToken.updateMany({
+            where: { family, revokedAt: null },
+            data: { revokedAt },
+        }),
+        findActiveForFamily: (family) => getPrisma().refreshToken.findFirst({
+            where: { family, revokedAt: null, expiresAt: { gt: new Date() } },
+            orderBy: { createdAt: "desc" },
+        }),
+        rotate: ({ currentTokenId, replacementData, revokedAt = new Date() }) => getPrisma().$transaction(async (tx) => {
+            const revokeResult = await tx.refreshToken.updateMany({
+                where: { id: currentTokenId, revokedAt: null },
+                data: { revokedAt },
+            });
+
+            if (revokeResult.count !== 1) {
+                const error = new Error("Refresh token has already been used");
+                error.code = "REFRESH_TOKEN_REPLAY";
+                throw error;
+            }
+
+            const replacement = await tx.refreshToken.create({ data: replacementData });
+            await tx.refreshToken.update({
+                where: { id: currentTokenId },
+                data: { replacedByTokenId: replacement.id },
+            });
+
+            return replacement;
+        }),
+    },
     Team: {
         findById: (id) => getPrisma().team.findUnique({ where: { id } }),
         create: (data) => getPrisma().team.create({ data }),
@@ -107,6 +140,3 @@ const prismaRepositories = {
 };
 
 module.exports = { getId, prismaRepositories };
-
-
-

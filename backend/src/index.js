@@ -30,8 +30,8 @@ app.set("views", [
 ]);
 
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/content", contentRoutes);
+app.use("/v1/api/auth", authRoutes);
+app.use("/v1/api/content", contentRoutes);
 app.use("/", uiRoutes);
 
 

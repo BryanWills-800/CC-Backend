@@ -31,7 +31,7 @@ Write-Step "Applying PostgreSQL password to ensure the local database user match
 docker exec $containerName psql -U $postgresUser -d postgres -c "ALTER USER $postgresUser WITH PASSWORD '$postgresPassword';"
 
 Write-Step "Checking whether database '$databaseName' exists..."
-$existingDatabase = docker exec $containerName psql -U $postgresUser -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$databaseName'"
+$existingDatabase = docker exec $containerName psql -U $postgresUser -d postgres -tAc "SELECT 1 FROM pg_database WHERE database name = '$databaseName'"
 if ($existingDatabase -ne "1") {
     Write-Step "Database '$databaseName' is missing. Creating it..."
     docker exec $containerName createdb -U $postgresUser $databaseName

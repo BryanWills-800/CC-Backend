@@ -1,6 +1,7 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const request = require("supertest");
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 
 jest.mock("bcryptjs", () => ({
@@ -19,12 +20,21 @@ jest.mock("../db/prismaRepositories", () => ({
             update: jest.fn(),
             delete: jest.fn(),
         },
+        RefreshToken: {
+            create: jest.fn(),
+            findByTokenHash: jest.fn(),
+            revoke: jest.fn(),
+            rotate: jest.fn(),
+            revokeFamily: jest.fn(),
+            findActiveForFamily: jest.fn(),
+        },
     },
 }));
 
 const bcryptjs = require("bcryptjs");
 const { prismaRepositories } = require("../db/prismaRepositories");
 const User = prismaRepositories.User;
+const RefreshToken = prismaRepositories.RefreshToken;
 const authRoutes = require("../routes/authRoutes");
 const { authenticateUser, authorizeUserRole } = require("../middlewares/authMiddleware");
 
@@ -46,6 +56,12 @@ describe("auth flow", () => {
         User.create.mockResolvedValue({ id: "user-1" });
         User.update.mockResolvedValue({ id: "user-1" });
         User.delete.mockResolvedValue({ id: "user-1" });
+        RefreshToken.create.mockResolvedValue({ id: "refresh-1" });
+        RefreshToken.findByTokenHash.mockResolvedValue(null);
+        RefreshToken.revoke.mockResolvedValue({ id: "refresh-1" });
+        RefreshToken.rotate.mockResolvedValue({ id: "refresh-2" });
+        RefreshToken.revokeFamily.mockResolvedValue({ count: 1 });
+        RefreshToken.findActiveForFamily.mockResolvedValue(null);
     });
 
     afterAll(() => {
@@ -140,6 +156,140 @@ describe("auth flow", () => {
         expect(response.headers["set-cookie"][0]).toContain("Secure");
     });
 
+
+    test("login stores only hashed refresh tokens", async () => {
+        User.findByName.mockResolvedValue({
+            id: "user-1",
+            name: "Bryan",
+            email: "bryan@example.com",
+            avatarUrl: null,
+            passwordHash: "hash",
+        });
+        bcryptjs.compare.mockResolvedValue(true);
+
+        const response = await request(createApp())
+            .post("/api/auth/login")
+            .send({ name: "Bryan", password: "password" });
+
+        const refreshCookie = response.headers["set-cookie"].find((cookie) => cookie.startsWith("refreshToken="));
+        const rawRefreshToken = refreshCookie.split(";")[0].replace("refreshToken=", "");
+        const storedHash = RefreshToken.create.mock.calls[0][0].tokenHash;
+
+        expect(refreshCookie).toContain("HttpOnly");
+        expect(storedHash).not.toBe(rawRefreshToken);
+        expect(storedHash).toBe(crypto.createHash("sha256").update(rawRefreshToken).digest("hex"));
+    });
+
+    test("refresh rotates the token successfully", async () => {
+        const refreshToken = jwt.sign({ userId: "user-1", family: "family-1", jti: "old-jti" }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        const tokenHash = crypto.createHash("sha256").update(refreshToken).digest("hex");
+        RefreshToken.findByTokenHash.mockResolvedValue({
+            id: "refresh-1",
+            userId: "user-1",
+            tokenHash,
+            family: "family-1",
+            expiresAt: new Date(Date.now() + 60000),
+            revokedAt: null,
+        });
+        User.findById.mockResolvedValue({
+            id: "user-1",
+            name: "Bryan",
+            email: "bryan@example.com",
+            avatarUrl: null,
+        });
+
+        const response = await request(createApp())
+            .post("/api/auth/refresh")
+            .set("Cookie", `refreshToken=${refreshToken}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ message: "Token refreshed" });
+        expect(RefreshToken.rotate).toHaveBeenCalledWith(expect.objectContaining({
+            currentTokenId: "refresh-1",
+            replacementData: expect.objectContaining({
+                userId: "user-1",
+                family: "family-1",
+                tokenHash: expect.any(String),
+                expiresAt: expect.any(Date),
+            }),
+        }));
+        expect(response.headers["set-cookie"].some((cookie) => cookie.startsWith("loginToken="))).toBe(true);
+        expect(response.headers["set-cookie"].some((cookie) => cookie.startsWith("refreshToken="))).toBe(true);
+    });
+
+    test("old refresh token cannot be reused", async () => {
+        const refreshToken = jwt.sign({ userId: "user-1", family: "family-1", jti: "old-jti" }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        RefreshToken.findByTokenHash.mockResolvedValue({
+            id: "refresh-1",
+            userId: "user-1",
+            family: "family-1",
+            expiresAt: new Date(Date.now() + 60000),
+            revokedAt: new Date(),
+        });
+
+        const response = await request(createApp())
+            .post("/api/auth/refresh")
+            .set("Cookie", `refreshToken=${refreshToken}`);
+
+        expect(response.status).toBe(401);
+        expect(response.body).toEqual({ message: "Refresh token reuse detected" });
+        expect(RefreshToken.revokeFamily).toHaveBeenCalledWith("family-1");
+        expect(RefreshToken.rotate).not.toHaveBeenCalled();
+    });
+
+    test("reusing a revoked token revokes the entire token family", async () => {
+        const refreshToken = jwt.sign({ userId: "user-1", family: "family-replay", jti: "old-jti" }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        RefreshToken.findByTokenHash.mockResolvedValue({
+            id: "refresh-1",
+            userId: "user-1",
+            family: "family-replay",
+            expiresAt: new Date(Date.now() + 60000),
+            revokedAt: new Date(),
+        });
+
+        await request(createApp())
+            .post("/api/auth/refresh")
+            .set("Cookie", `refreshToken=${refreshToken}`);
+
+        expect(RefreshToken.revokeFamily).toHaveBeenCalledWith("family-replay");
+    });
+
+    test("concurrent refresh attempts allow only one successful rotation", async () => {
+        const refreshToken = jwt.sign({ userId: "user-1", family: "family-1", jti: "old-jti" }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        const replayError = new Error("Refresh token has already been used");
+        replayError.code = "REFRESH_TOKEN_REPLAY";
+        RefreshToken.findByTokenHash.mockResolvedValue({
+            id: "refresh-1",
+            userId: "user-1",
+            family: "family-1",
+            expiresAt: new Date(Date.now() + 60000),
+            revokedAt: null,
+        });
+        RefreshToken.rotate.mockRejectedValue(replayError);
+        User.findById.mockResolvedValue({
+            id: "user-1",
+            name: "Bryan",
+            email: "bryan@example.com",
+            avatarUrl: null,
+        });
+
+        const response = await request(createApp())
+            .post("/api/auth/refresh")
+            .set("Cookie", `refreshToken=${refreshToken}`);
+
+        expect(response.status).toBe(401);
+        expect(RefreshToken.revokeFamily).toHaveBeenCalledWith("family-1");
+    });
+
+    test("missing refresh token returns 401 and clears auth cookies", async () => {
+        const response = await request(createApp()).post("/api/auth/refresh");
+
+        expect(response.status).toBe(401);
+        expect(response.body).toEqual({ message: "Refresh token required" });
+        expect(response.headers["set-cookie"][0]).toContain("loginToken=;");
+        expect(response.headers["set-cookie"][1]).toContain("roleToken=;");
+        expect(response.headers["set-cookie"][2]).toContain("refreshToken=;");
+    });
     test("logout clears cookie and redirects without a loginToken", async () => {
         const response = await request(createApp()).post("/api/auth/logout");
 
@@ -276,6 +426,40 @@ describe("auth middleware", () => {
         expect(next).toHaveBeenCalled();
     });
 
+
+    test("authenticateUser refreshes access cookies and continues when loginToken is missing", async () => {
+        const refreshToken = jwt.sign({ userId: "user-1", family: "family-1", jti: "old-jti" }, process.env.JWT_SECRET, { expiresIn: "1d" });
+        RefreshToken.findByTokenHash.mockResolvedValue({
+            id: "refresh-1",
+            userId: "user-1",
+            family: "family-1",
+            expiresAt: new Date(Date.now() + 60000),
+            revokedAt: null,
+        });
+        User.findById.mockResolvedValue({
+            id: "user-1",
+            name: "Bryan",
+            email: "bryan@example.com",
+            avatarUrl: null,
+        });
+        const req = { cookies: { refreshToken } };
+        const res = {
+            cookie: jest.fn().mockReturnThis(),
+            clearCookie: jest.fn().mockReturnThis(),
+            status: jest.fn().mockReturnThis(),
+            json: jest.fn(),
+        };
+        const next = jest.fn();
+
+        await authenticateUser(req, res, next);
+
+        expect(next).toHaveBeenCalledTimes(1);
+        expect(req.user).toMatchObject({ userId: "user-1", name: "Bryan" });
+        expect(res.cookie).toHaveBeenCalledWith("loginToken", expect.any(String), expect.objectContaining({ httpOnly: true }));
+        expect(res.cookie).toHaveBeenCalledWith("refreshToken", expect.any(String), expect.objectContaining({ httpOnly: true }));
+        expect(RefreshToken.rotate).toHaveBeenCalledWith(expect.objectContaining({ currentTokenId: "refresh-1" }));
+        expect(res.status).not.toHaveBeenCalled();
+    });
     test("authenticateUser rejects missing loginToken", () => {
         const req = { cookies: {} };
         const res = createResponse();

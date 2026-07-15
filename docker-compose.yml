@@ -38,7 +38,6 @@ services:
     ports:
       - "${PORT:-4001}:${PORT:-4001}"
 
-
   nginx:
     build:
       context: .
@@ -50,6 +49,8 @@ services:
       - backend
     ports:
       - "${NGINX_PORT:-8080}:80"
+
+
 volumes:
   rafc_pgdata:
 
