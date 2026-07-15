@@ -8,6 +8,8 @@ const { prismaConnect } = require('./db/prismaConnect');
 dotenv.config({ path: path.join(__dirname, '../.env') });
 const authRoutes = require("./routes/authRoutes");
 const contentRoutes = require("./routes/contentRoutes");
+const restApiRoutes = require("./routes/restApiRoutes");
+const { health } = require("./controllers/restApiController");
 const uiRoutes = require("./routes/uiRoutes");
 // const { permissions, checkPermissions } = require("./permissions");
 
@@ -30,8 +32,10 @@ app.set("views", [
 ]);
 
 // Routes
+app.get("/health", health);
 app.use("/v1/api/auth", authRoutes);
 app.use("/v1/api/content", contentRoutes);
+app.use("/v1/api", restApiRoutes);
 app.use("/", uiRoutes);
 
 
@@ -46,6 +50,7 @@ const startServer = async () => {
 }
 
 startServer();
+
 
 
 

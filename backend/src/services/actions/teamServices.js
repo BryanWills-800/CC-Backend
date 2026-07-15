@@ -1,8 +1,8 @@
 const crypto = require("crypto");
 const {
     INVITABLE_ROLES,
-    TEAM_MANAGER_ROLES,
-    TEAM_OWNER_ROLES,
+    MAINTAINER_LEVEL_ROLES,
+    OWNER_LEVEL_ROLES,
     assertAllowedValue,
     assertMembership,
     assertRequired,
@@ -69,7 +69,7 @@ const inviteMembersService = async (input, deps = defaultDeps) => {
     assertAllowedValue(inviteInput.role, INVITABLE_ROLES, "Invitation role is invalid");
 
     await assertTeamExists(inviteInput.teamId, deps);
-    await assertMembership({ teamId: inviteInput.teamId, userId: inviteInput.userId, allowedRoles: TEAM_MANAGER_ROLES }, deps);
+    await assertMembership({ teamId: inviteInput.teamId, userId: inviteInput.userId, allowedRoles: MAINTAINER_LEVEL_ROLES }, deps);
 
     const token = crypto.randomBytes(32).toString("hex");
     const invitation = await deps.TeamInvitation.create({
@@ -91,9 +91,56 @@ const inviteMembersService = async (input, deps = defaultDeps) => {
         ipAddress: getAuditIpAddress(inviteInput),
     }, deps);
 
-    return { message: `Invitation created for ${invitation.email}.`, data: invitation };
+    const { tokenHash, ...invitationData } = invitation;
+    return { message: `Invitation created for ${invitation.email}.`, data: { ...invitationData, invitationToken: token } };
 };
 
+
+const normalizeJoinTeamInput = (input = {}) => ({
+    teamId: input.teamId || input.team || "",
+    userId: input.userId,
+    token: normalizeText(input.token),
+    auditContext: input.auditContext,
+});
+
+const joinTeamService = async (input, deps = defaultDeps) => {
+    const joinInput = normalizeJoinTeamInput(input);
+    assertRequired(joinInput.teamId, "Team is required");
+    if (!joinInput.userId) throw createActionError(401, "Authenticated user is required");
+    assertRequired(joinInput.token, "Invitation token is required");
+
+    await assertTeamExists(joinInput.teamId, deps);
+
+    const tokenHash = crypto.createHash("sha256").update(joinInput.token).digest("hex");
+    const invitation = await deps.TeamInvitation.findByTokenHash(tokenHash);
+    if (!invitation || invitation.teamId !== joinInput.teamId) throw createActionError(404, "Invitation not found");
+    if (invitation.status !== "pending") throw createActionError(409, "Invitation is no longer pending");
+    if (invitation.expiresAt && invitation.expiresAt <= new Date()) throw createActionError(400, "Invitation has expired");
+
+    const existingMembership = await deps.TeamMembership.findForUserTeam({ teamId: joinInput.teamId, userId: joinInput.userId });
+    if (existingMembership) throw createActionError(409, "User is already a team member");
+
+    const membership = await deps.TeamMembership.create({
+        teamId: joinInput.teamId,
+        userId: joinInput.userId,
+        role: invitation.role,
+        invitedById: invitation.invitedById,
+    });
+
+    await deps.TeamInvitation.accept(invitation.id);
+
+    await logActivity({
+        teamId: joinInput.teamId,
+        actorId: joinInput.userId,
+        action: "team.joined",
+        entityType: "team",
+        entityId: joinInput.teamId,
+        metadata: { role: invitation.role },
+        ipAddress: getAuditIpAddress(joinInput),
+    }, deps);
+
+    return { message: "Team joined successfully.", data: membership };
+};
 const normalizeChangeRolesInput = (input = {}) => ({
     teamId: input.teamId || input.team || "",
     memberUserId: input.memberUserId || input.member || input.user || "",
@@ -109,7 +156,7 @@ const changeRolesService = async (input, deps = defaultDeps) => {
     assertAllowedValue(roleInput.role, INVITABLE_ROLES, "Team role is invalid");
 
     await assertTeamExists(roleInput.teamId, deps);
-    await assertMembership({ teamId: roleInput.teamId, userId: roleInput.userId, allowedRoles: TEAM_OWNER_ROLES }, deps);
+    await assertMembership({ teamId: roleInput.teamId, userId: roleInput.userId, allowedRoles: OWNER_LEVEL_ROLES }, deps);
 
     const membership = await deps.TeamMembership.findForUserTeam({ teamId: roleInput.teamId, userId: roleInput.memberUserId });
     if (!membership) throw createActionError(404, "Team member not found");
@@ -137,4 +184,7 @@ module.exports = {
     changeRolesService,
     createTeamService,
     inviteMembersService,
+    joinTeamService,
 };
+
+

@@ -1,5 +1,5 @@
 const {
-    TEAM_MANAGER_ROLES,
+    MAINTAINER_LEVEL_ROLES,
     assertRequired,
     assertTeamExists,
     defaultDeps,
@@ -9,7 +9,6 @@ const {
 } = require("./shared");
 
 const DEFAULT_PROJECT_STATUS = "active";
-const PROJECT_CREATOR_ROLES = TEAM_MANAGER_ROLES;
 
 const createProjectError = (statusCode, message) => {
     const error = new Error(message);
@@ -35,7 +34,7 @@ const validateProjectInput = (input) => {
 
 const assertCanCreateProject = async ({ teamId, userId }, deps) => {
     const membership = await deps.TeamMembership.findForUserTeam({ teamId, userId });
-    if (!membership || !PROJECT_CREATOR_ROLES.includes(membership.role)) {
+    if (!membership || !MAINTAINER_LEVEL_ROLES.includes(membership.role)) {
         throw createProjectError(403, "Only owners and maintainers can create projects");
     }
 
@@ -75,7 +74,6 @@ const createProjectService = async (input, deps = defaultDeps) => {
 
 module.exports = {
     DEFAULT_PROJECT_STATUS,
-    PROJECT_CREATOR_ROLES,
     buildProjectPayload,
     createProjectError,
     createProjectService,

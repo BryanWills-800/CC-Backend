@@ -1,5 +1,4 @@
 jest.mock("../services/actions/createProjectServices", () => ({
-    PROJECT_CREATOR_ROLES: ["owner", "maintainer"],
     createProjectService: jest.fn(),
 }));
 

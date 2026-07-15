@@ -1,9 +1,9 @@
 const { prismaRepositories } = require("../../db/prismaRepositories");
 
-const TEAM_MEMBER_ROLES = ["owner", "maintainer", "member", "viewer"];
-const TASK_CREATOR_ROLES = ["owner", "maintainer", "member"];
-const TEAM_MANAGER_ROLES = ["owner", "maintainer"];
-const TEAM_OWNER_ROLES = ["owner"];
+const VIEWER_LEVEL_ROLES = ["owner", "maintainer", "member", "viewer"];
+const MEMBER_LEVEL_ROLES = ["owner", "maintainer", "member"];
+const MAINTAINER_LEVEL_ROLES = ["owner", "maintainer"];
+const OWNER_LEVEL_ROLES = ["owner"];
 const INVITABLE_ROLES = ["maintainer", "member", "viewer"];
 const PROJECT_STATUSES = ["active", "on_hold", "completed", "archived"];
 const TASK_STATUSES = ["todo", "in_progress", "blocked", "review", "done"];
@@ -82,19 +82,18 @@ const logActivity = async ({ teamId, actorId, action, entityType, entityId, meta
         ipAddress: ipAddress || null,
     };
 
-
     return deps.ActivityLog.create(event);
 };
 
 module.exports = {
-    TEAM_MEMBER_ROLES,
-    TASK_CREATOR_ROLES,
-    TEAM_MANAGER_ROLES,
-    TEAM_OWNER_ROLES,
     INVITABLE_ROLES,
+    MAINTAINER_LEVEL_ROLES,
+    MEMBER_LEVEL_ROLES,
+    OWNER_LEVEL_ROLES,
     PROJECT_STATUSES,
-    TASK_STATUSES,
     TASK_PRIORITIES,
+    TASK_STATUSES,
+    VIEWER_LEVEL_ROLES,
     defaultDeps,
     assertAllowedValue,
     assertMembership,
@@ -110,6 +109,3 @@ module.exports = {
     normalizeDate,
     normalizeText,
 };
-
-
-

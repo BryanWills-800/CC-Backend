@@ -1,6 +1,6 @@
 const {
     PROJECT_STATUSES,
-    TEAM_MANAGER_ROLES,
+    MAINTAINER_LEVEL_ROLES,
     assertAllowedValue,
     assertMembership,
     assertProjectExists,
@@ -32,7 +32,7 @@ const editProjectService = async (input, deps = defaultDeps) => {
     const project = await assertProjectExists(projectInput.projectId, deps);
     const teamId = getProjectTeamId(project);
     await assertTeamExists(teamId, deps);
-    await assertMembership({ teamId, userId: projectInput.userId, allowedRoles: TEAM_MANAGER_ROLES }, deps);
+    await assertMembership({ teamId, userId: projectInput.userId, allowedRoles: MAINTAINER_LEVEL_ROLES }, deps);
 
     return { message: `Project "${project.name}" is ready to edit.`, data: project };
 };
@@ -45,7 +45,7 @@ const updateProjectService = async (input, deps = defaultDeps) => {
     const project = await assertProjectExists(projectInput.projectId, deps);
     const teamId = getProjectTeamId(project);
     await assertTeamExists(teamId, deps);
-    await assertMembership({ teamId, userId: projectInput.userId, allowedRoles: TEAM_MANAGER_ROLES }, deps);
+    await assertMembership({ teamId, userId: projectInput.userId, allowedRoles: MAINTAINER_LEVEL_ROLES }, deps);
 
     const data = { updatedById: projectInput.userId };
     if (projectInput.name) data.name = projectInput.name;
@@ -75,7 +75,7 @@ const deleteProjectService = async (input, deps = defaultDeps) => {
     const project = await assertProjectExists(projectInput.projectId, deps);
     const teamId = getProjectTeamId(project);
     await assertTeamExists(teamId, deps);
-    await assertMembership({ teamId, userId: projectInput.userId, allowedRoles: TEAM_MANAGER_ROLES }, deps);
+    await assertMembership({ teamId, userId: projectInput.userId, allowedRoles: MAINTAINER_LEVEL_ROLES }, deps);
 
     const deletedProject = await deps.Project.softDelete(projectInput.projectId, projectInput.userId);
 

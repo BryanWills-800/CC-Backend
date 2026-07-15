@@ -2,6 +2,7 @@ const {
     changeRolesService,
     createTeamService,
     inviteMembersService,
+    joinTeamService,
 } = require("../services/actions/teamServices");
 const { createActionDeps, primeTeam } = require("./serviceTestUtils");
 
@@ -43,7 +44,7 @@ describe("team action services edge cases", () => {
     test("inviteMembers defaults role to member", async () => {
         deps.TeamInvitation.create.mockImplementation(async (payload) => ({ id: "invite-1", ...payload }));
 
-        await inviteMembersService({ teamId: "team-1", userId: "user-1", email: " USER@EXAMPLE.COM " }, deps);
+        const result = await inviteMembersService({ teamId: "team-1", userId: "user-1", email: " USER@EXAMPLE.COM " }, deps);
 
         expect(deps.TeamInvitation.create.calls[0][0]).toEqual(expect.objectContaining({
             teamId: "team-1",
@@ -53,6 +54,8 @@ describe("team action services edge cases", () => {
         }));
         expect(deps.TeamInvitation.create.calls[0][0].tokenHash).toHaveLength(64);
         expect(deps.TeamInvitation.create.calls[0][0].expiresAt).toBeInstanceOf(Date);
+        expect(result.data.invitationToken).toBeTruthy();
+        expect(result.data.tokenHash).toBeUndefined();
     });
 
     test("inviteMembers rejects invalid invite role", async () => {
@@ -69,12 +72,83 @@ describe("team action services edge cases", () => {
         });
     });
 
-    test("inviteMembers requires manager permissions", async () => {
+    test("inviteMembers requires maintainer-level permissions", async () => {
         deps.TeamMembership.findForUserTeam.mockResolvedValue({ role: "viewer" });
 
         await expect(inviteMembersService({ teamId: "team-1", userId: "user-1", email: "a@example.com" }, deps)).rejects.toMatchObject({ statusCode: 403 });
     });
 
+
+    test("joinTeam accepts a pending invitation token", async () => {
+        deps.TeamMembership.findForUserTeam.mockResolvedValue(null);
+        deps.TeamInvitation.findByTokenHash.mockResolvedValue({
+            id: "invite-1",
+            teamId: "team-1",
+            role: "member",
+            invitedById: "owner-1",
+            status: "pending",
+            expiresAt: new Date(Date.now() + 60000),
+        });
+        deps.TeamMembership.create.mockResolvedValue({ id: "membership-1", teamId: "team-1", userId: "user-2", role: "member" });
+        deps.TeamInvitation.accept.mockResolvedValue({ id: "invite-1", status: "accepted" });
+
+        const result = await joinTeamService({ teamId: "team-1", userId: "user-2", token: "raw-token" }, deps);
+
+        expect(result.message).toBe("Team joined successfully.");
+        expect(deps.TeamInvitation.findByTokenHash.calls[0][0]).toHaveLength(64);
+        expect(deps.TeamMembership.create.calls[0][0]).toEqual({
+            teamId: "team-1",
+            userId: "user-2",
+            role: "member",
+            invitedById: "owner-1",
+        });
+        expect(deps.TeamInvitation.accept.calls[0][0]).toBe("invite-1");
+        expect(deps.ActivityLog.create.calls[0][0]).toEqual(expect.objectContaining({
+            action: "team.joined",
+            actorId: "user-2",
+        }));
+    });
+
+    test("joinTeam rejects invalid, expired, and already accepted invitations", async () => {
+        deps.TeamMembership.findForUserTeam.mockResolvedValue(null);
+        deps.TeamInvitation.findByTokenHash.mockResolvedValue(null);
+
+        await expect(joinTeamService({ teamId: "team-1", userId: "user-2", token: "bad" }, deps)).rejects.toMatchObject({ statusCode: 404 });
+
+        deps.TeamInvitation.findByTokenHash.mockResolvedValue({
+            id: "invite-1",
+            teamId: "team-1",
+            role: "member",
+            status: "accepted",
+            expiresAt: new Date(Date.now() + 60000),
+        });
+        await expect(joinTeamService({ teamId: "team-1", userId: "user-2", token: "used" }, deps)).rejects.toMatchObject({ statusCode: 409 });
+
+        deps.TeamInvitation.findByTokenHash.mockResolvedValue({
+            id: "invite-1",
+            teamId: "team-1",
+            role: "member",
+            status: "pending",
+            expiresAt: new Date(Date.now() - 60000),
+        });
+        await expect(joinTeamService({ teamId: "team-1", userId: "user-2", token: "expired" }, deps)).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    test("joinTeam rejects duplicate memberships", async () => {
+        deps.TeamInvitation.findByTokenHash.mockResolvedValue({
+            id: "invite-1",
+            teamId: "team-1",
+            role: "member",
+            status: "pending",
+            expiresAt: new Date(Date.now() + 60000),
+        });
+        deps.TeamMembership.findForUserTeam.mockResolvedValue({ id: "membership-1" });
+
+        await expect(joinTeamService({ teamId: "team-1", userId: "user-2", token: "raw-token" }, deps)).rejects.toMatchObject({
+            statusCode: 409,
+            message: "User is already a team member",
+        });
+    });
     test("changeRoles rejects invalid target role", async () => {
         await expect(changeRolesService({ teamId: "team-1", userId: "owner-1", memberUserId: "user-2", role: "owner" }, deps)).rejects.toMatchObject({
             statusCode: 400,
@@ -120,4 +194,6 @@ describe("team action services edge cases", () => {
         }));
     });
 });
+
+
 

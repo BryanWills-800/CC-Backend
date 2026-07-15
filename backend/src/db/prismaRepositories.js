@@ -89,6 +89,14 @@ const prismaRepositories = {
     },
     TeamInvitation: {
         create: (data) => getPrisma().teamInvitation.create({ data }),
+        findByTokenHash: (tokenHash) => getPrisma().teamInvitation.findFirst({
+            where: { tokenHash },
+            include: { team: true },
+        }),
+        accept: (id) => getPrisma().teamInvitation.update({
+            where: { id },
+            data: { status: "accepted", acceptedAt: new Date() },
+        }),
     },
     Project: {
         findById: (id) => getPrisma().project.findUnique({ where: { id } }),
@@ -96,6 +104,7 @@ const prismaRepositories = {
             where: { teamId, isDeleted: false },
             orderBy: { name: "asc" },
         }),
+        countForTeam: (teamId) => getPrisma().project.count({ where: { teamId, isDeleted: false } }),
         create: (data) => getPrisma().project.create({ data }),
         update: (id, data) => getPrisma().project.update({ where: { id }, data }),
         softDelete: (id, updatedById) => getPrisma().project.update({
@@ -106,6 +115,14 @@ const prismaRepositories = {
     Task: {
         find: (where) => getPrisma().task.findMany({ where, include: { assignedTo: true } }),
         findById: (id) => getPrisma().task.findUnique({ where: { id }, include: { assignedTo: true } }),
+        count: (where) => getPrisma().task.count({ where }),
+        findPaginated: ({ where, skip, take }) => getPrisma().task.findMany({
+            where,
+            skip,
+            take,
+            include: { assignedTo: true },
+            orderBy: { title: "asc" },
+        }),
         findForTeam: (teamId) => getPrisma().task.findMany({
             where: { teamId, isDeleted: false },
             orderBy: { title: "asc" },
@@ -128,6 +145,11 @@ const prismaRepositories = {
     },
     Comment: {
         create: (data) => getPrisma().comment.create({ data }),
+        findForTask: (taskId) => getPrisma().comment.findMany({
+            where: { taskId, isDeleted: false },
+            include: { author: true },
+            orderBy: { createdAt: "asc" },
+        }),
     },
     ActivityLog: {
         create: (data) => getPrisma().activityLog.create({
@@ -136,7 +158,12 @@ const prismaRepositories = {
                 action: ACTIVITY_ACTIONS[data.action] || data.action,
             },
         }),
+        findForTeam: (teamId) => getPrisma().activityLog.findMany({
+            where: { teamId },
+            orderBy: { createdAt: "desc" },
+        }),
     },
 };
 
 module.exports = { getId, prismaRepositories };
+

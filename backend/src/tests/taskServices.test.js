@@ -48,6 +48,31 @@ describe("task action services edge cases", () => {
         });
     });
 
+
+    test("viewTasks supports priority search and pagination", async () => {
+        deps.Task.count.mockResolvedValue(25);
+        deps.Task.findPaginated.mockResolvedValue([{ id: "task-1" }]);
+
+        const result = await viewTasksService({
+            teamId: "team-1",
+            userId: "user-1",
+            status: "todo",
+            priority: "high",
+            search: "build",
+            page: 2,
+            limit: 10,
+        }, deps);
+
+        expect(deps.Task.count.calls[0][0]).toEqual({
+            isDeleted: false,
+            teamId: "team-1",
+            status: "todo",
+            priority: "high",
+            title: { contains: "build", mode: "insensitive" },
+        });
+        expect(deps.Task.findPaginated.calls[0][0]).toEqual(expect.objectContaining({ skip: 10, take: 10 }));
+        expect(result.pagination).toEqual({ page: 2, limit: 10, total: 25, pages: 3 });
+    });
     test("createTask rejects missing project", async () => {
         await expect(createTaskService({ userId: "user-1", title: "Build" }, deps)).rejects.toMatchObject({
             statusCode: 400,
@@ -154,4 +179,5 @@ describe("task action services edge cases", () => {
         expect(deps.ActivityLog.create.calls[0][0].action).toBe("task.deleted");
     });
 });
+
 

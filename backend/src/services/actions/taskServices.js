@@ -1,9 +1,9 @@
 const {
-    TASK_CREATOR_ROLES,
+    MEMBER_LEVEL_ROLES,
     TASK_PRIORITIES,
     TASK_STATUSES,
-    TEAM_MANAGER_ROLES,
-    TEAM_MEMBER_ROLES,
+    MAINTAINER_LEVEL_ROLES,
+    VIEWER_LEVEL_ROLES,
     assertAllowedValue,
     assertMembership,
     assertProjectExists,
@@ -29,6 +29,10 @@ const normalizeViewTasksInput = (input = {}) => ({
     projectId: input.projectId || input.project || "",
     userId: input.userId || input.createdBy,
     status: normalizeText(input.status),
+    priority: normalizeText(input.priority),
+    search: normalizeText(input.search),
+    page: input.page,
+    limit: input.limit,
 });
 
 const viewTasksService = async (input, deps = defaultDeps) => {
@@ -46,10 +50,30 @@ const viewTasksService = async (input, deps = defaultDeps) => {
     }
 
     assertAllowedValue(taskInput.status, TASK_STATUSES, "Task status is invalid");
+    assertAllowedValue(taskInput.priority, TASK_PRIORITIES, "Task priority is invalid");
     if (taskInput.status) query.status = taskInput.status;
+    if (taskInput.priority) query.priority = taskInput.priority;
+    if (taskInput.search) query.title = { contains: taskInput.search, mode: "insensitive" };
 
     await assertTeamExists(teamId, deps);
-    await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: TEAM_MEMBER_ROLES }, deps);
+    await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: VIEWER_LEVEL_ROLES }, deps);
+
+    if (taskInput.page && taskInput.limit && deps.Task.count && deps.Task.findPaginated) {
+        const page = Number(taskInput.page);
+        const limit = Number(taskInput.limit);
+        const total = await deps.Task.count(query);
+        const tasks = await deps.Task.findPaginated({
+            where: query,
+            skip: (page - 1) * limit,
+            take: limit,
+        });
+
+        return {
+            message: tasks.length ? `Found ${tasks.length} task(s).` : "No tasks found.",
+            data: tasks,
+            pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+        };
+    }
 
     const tasks = await deps.Task.find(query);
 
@@ -80,7 +104,7 @@ const createTaskService = async (input, deps = defaultDeps) => {
     const project = await assertProjectExists(taskInput.projectId, deps);
     const teamId = getProjectTeamId(project);
     await assertTeamExists(teamId, deps);
-    await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: TASK_CREATOR_ROLES }, deps);
+    await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: MEMBER_LEVEL_ROLES }, deps);
 
     const task = await deps.Task.create({
         teamId,
@@ -115,7 +139,7 @@ const normalizeUpdateAssignedTaskInput = (input = {}) => ({
     auditContext: input.auditContext,
 });
 
-const updateAssignedTaskService = async (input, deps = defaultDeps) => {
+const updateTaskWithAccess = async (input, deps = defaultDeps, allowMaintainerLevelUpdate = false) => {
     const taskInput = normalizeUpdateAssignedTaskInput(input);
     assertRequired(taskInput.taskId, "Task is required");
     assertAllowedValue(taskInput.status, TASK_STATUSES, "Task status is invalid");
@@ -123,10 +147,15 @@ const updateAssignedTaskService = async (input, deps = defaultDeps) => {
     const task = await assertTaskExists(taskInput.taskId, deps);
     const teamId = getTaskTeamId(task);
     await assertTeamExists(teamId, deps);
-    await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: TASK_CREATOR_ROLES }, deps);
+    const membership = await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: VIEWER_LEVEL_ROLES }, deps);
 
+    const hasMaintainerLevelAccess = MAINTAINER_LEVEL_ROLES.includes(membership.role);
     const isAssigned = Array.isArray(task.assignedTo) && task.assignedTo.some((assignee) => idMatches(getAssigneeId(assignee), taskInput.userId));
-    if (!isAssigned) throw createActionError(403, "Only assigned users can update this task");
+    if (!isAssigned && !(allowMaintainerLevelUpdate && hasMaintainerLevelAccess)) {
+        throw createActionError(403, allowMaintainerLevelUpdate
+            ? "Only maintainer-level users or assigned users can update this task"
+            : "Only assigned users can update this task");
+    }
 
     const data = { updatedById: taskInput.userId };
     if (taskInput.status) data.status = taskInput.status;
@@ -149,6 +178,9 @@ const updateAssignedTaskService = async (input, deps = defaultDeps) => {
     return { message: `Task "${updatedTask.title}" updated successfully.`, data: updatedTask };
 };
 
+const updateAssignedTaskService = (input, deps = defaultDeps) => updateTaskWithAccess(input, deps, false);
+const updateTaskService = (input, deps = defaultDeps) => updateTaskWithAccess(input, deps, true);
+
 const normalizeCommentInput = (input = {}) => ({
     taskId: input.taskId || input.task || "",
     userId: input.userId || input.author,
@@ -164,7 +196,7 @@ const commentService = async (input, deps = defaultDeps) => {
     const task = await assertTaskExists(commentInput.taskId, deps);
     const teamId = getTaskTeamId(task);
     await assertTeamExists(teamId, deps);
-    await assertMembership({ teamId, userId: commentInput.userId, allowedRoles: TEAM_MEMBER_ROLES }, deps);
+    await assertMembership({ teamId, userId: commentInput.userId, allowedRoles: VIEWER_LEVEL_ROLES }, deps);
 
     const comment = await deps.Comment.create({
         teamId,
@@ -202,8 +234,8 @@ const assignTaskService = async (input, deps = defaultDeps) => {
     const task = await assertTaskExists(taskInput.taskId, deps);
     const teamId = getTaskTeamId(task);
     await assertTeamExists(teamId, deps);
-    await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: TEAM_MANAGER_ROLES }, deps);
-    await assertMembership({ teamId, userId: taskInput.assigneeId, allowedRoles: TEAM_MEMBER_ROLES }, deps);
+    await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: MAINTAINER_LEVEL_ROLES }, deps);
+    await assertMembership({ teamId, userId: taskInput.assigneeId, allowedRoles: VIEWER_LEVEL_ROLES }, deps);
 
     const assignedTo = Array.isArray(task.assignedTo) ? task.assignedTo : [];
     const alreadyAssigned = assignedTo.some((assignee) => idMatches(getAssigneeId(assignee), taskInput.assigneeId));
@@ -231,7 +263,7 @@ const deleteTaskService = async (input, deps = defaultDeps) => {
     const task = await assertTaskExists(taskInput.taskId, deps);
     const teamId = getTaskTeamId(task);
     await assertTeamExists(teamId, deps);
-    await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: TEAM_MANAGER_ROLES }, deps);
+    await assertMembership({ teamId, userId: taskInput.userId, allowedRoles: MAINTAINER_LEVEL_ROLES }, deps);
 
     const deletedTask = await deps.Task.softDelete(taskInput.taskId, taskInput.userId);
 
@@ -254,5 +286,7 @@ module.exports = {
     createTaskService,
     deleteTaskService,
     updateAssignedTaskService,
+    updateTaskService,
     viewTasksService,
 };
+

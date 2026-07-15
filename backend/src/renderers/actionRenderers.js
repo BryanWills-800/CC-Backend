@@ -1,6 +1,7 @@
 const { prismaRepositories } = require("../db/prismaRepositories");
 const { actionMessageServices } = require("../services/actionMessageServices");
-const { PROJECT_CREATOR_ROLES, createProjectService } = require("../services/actions/createProjectServices");
+const { createProjectService } = require("../services/actions/createProjectServices");
+const { MAINTAINER_LEVEL_ROLES } = require("../services/actions/shared");
 
 const ACTION_FORMS = {
     assignTask: {
@@ -38,7 +39,7 @@ const ACTION_FORMS = {
         successMessage: (project) => `Project "${project.name}" created successfully.`,
         notesTitle: "Create project service",
         notes: [
-            `Allowed roles: ${PROJECT_CREATOR_ROLES.join(", ")}`,
+            `Allowed roles: ${MAINTAINER_LEVEL_ROLES.join(", ")}`,
             "Creates a project document connected to the selected team.",
             "Writes a project.created activity log with request audit context.",
         ],

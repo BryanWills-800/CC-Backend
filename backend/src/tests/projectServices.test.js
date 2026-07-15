@@ -20,7 +20,7 @@ describe("project action services edge cases", () => {
         });
     });
 
-    test("editProject requires manager role", async () => {
+    test("editProject requires maintainer-level role", async () => {
         deps.Project.findById.mockResolvedValue({ id: "project-1", teamId: "team-1", name: "Core", isDeleted: false });
         deps.TeamMembership.findForUserTeam.mockResolvedValue({ role: "viewer" });
 

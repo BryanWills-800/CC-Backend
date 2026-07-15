@@ -33,6 +33,7 @@ const createActionDeps = () => ({
     Project: {
         findById: createMockFn(),
         findForTeam: createMockFn(),
+        countForTeam: createMockFn(),
         create: createMockFn(),
         update: createMockFn(),
         softDelete: createMockFn(),
@@ -45,18 +46,21 @@ const createActionDeps = () => ({
         create: createMockFn(),
         updateRole: createMockFn(),
     },
-    TeamInvitation: { create: createMockFn() },
+    TeamInvitation: { create: createMockFn(), findByTokenHash: createMockFn(), accept: createMockFn() },
     Task: {
         find: createMockFn(),
         findById: createMockFn(),
+        count: createMockFn(),
+        findPaginated: createMockFn(),
         findForTeam: createMockFn(),
+        countForTeam: createMockFn(),
         create: createMockFn(),
         update: createMockFn(),
         assign: createMockFn(),
         softDelete: createMockFn(),
     },
-    Comment: { create: createMockFn() },
-    ActivityLog: { create: createMockFn() },
+    Comment: { create: createMockFn(), findForTask: createMockFn() },
+    ActivityLog: { create: createMockFn(), findForTeam: createMockFn() },
 });
 
 const primeTeam = (deps, role = "maintainer") => {
@@ -71,3 +75,4 @@ module.exports = {
     createMockFn,
     primeTeam,
 };
+
