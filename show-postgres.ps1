@@ -32,42 +32,89 @@ try {
 
     $containerRunning = docker ps --filter "name=^/$containerName$" --format "{{.Names}}" 2>$null
     if ($containerRunning -ne $containerName) {
-        Write-Step "Container '$containerName' exists but is stopped. Starting it now..."
+        Write-Step "Container '$containerName' exists but is stopped. Starting it..."
         docker start $containerName | Out-Null
+
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to start container '$containerName'."
         }
     }
 
-    Write-Step "Databases in ${containerName}:"
+    Write-Step "Databases in $containerName"
+
     docker exec -i $containerName psql -U $PostgresUser -c "\l"
+
     if ($LASTEXITCODE -ne 0) {
-        throw "Failed to list databases from '$containerName'."
+        throw "Failed to list databases."
     }
 
-    $databaseNames = docker exec -i $containerName psql -U $PostgresUser -At -c "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname;"
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to query database names from '$containerName'."
-    }
+    $databaseNames = docker exec -i $containerName `
+        psql -U $PostgresUser `
+        -At `
+        -c "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname;"
 
     foreach ($databaseName in $databaseNames) {
+
         $databaseName = $databaseName.Trim()
+
         if (-not $databaseName) {
             continue
         }
 
         Write-Host ""
         Write-Host "============================================================"
-        Write-Host "Database: $databaseName"
+        Write-Host "DATABASE: $databaseName"
         Write-Host "============================================================"
 
         Write-Host ""
-        Write-Host "Schemas:"
-        docker exec -i $containerName psql -U $PostgresUser -d $databaseName -c "\dn"
+        Write-Host "Schemas"
+        docker exec -i $containerName `
+            psql -U $PostgresUser `
+            -d $databaseName `
+            -c "\dn"
 
         Write-Host ""
-        Write-Host "Tables:"
-        docker exec -i $containerName psql -U $PostgresUser -d $databaseName -c "\dt *.*"
+        Write-Host "Public Tables"
+        docker exec -i $containerName `
+            psql -U $PostgresUser `
+            -d $databaseName `
+            -c "\dt public.*"
+
+        $tableNames = docker exec -i $containerName `
+            psql -U $PostgresUser `
+            -d $databaseName `
+            -At `
+            -c "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename;"
+
+        foreach ($table in $tableNames) {
+
+            $table = $table.Trim()
+
+            if (-not $table) {
+                continue
+            }
+
+            Write-Host ""
+            Write-Host "------------------------------------------------------------"
+            Write-Host "TABLE: $table"
+            Write-Host "------------------------------------------------------------"
+
+            Write-Host ""
+            Write-Host "Rows"
+
+            docker exec -i $containerName `
+                psql -U $PostgresUser `
+                -d $databaseName `
+                -c "SELECT COUNT(*) AS total_rows FROM public.""$table"";"
+
+            Write-Host ""
+            Write-Host "Data (first 20 rows)"
+
+            docker exec -i $containerName `
+                psql -U $PostgresUser `
+                -d $databaseName `
+                -c "SELECT * FROM public.""$table"" LIMIT 20;"
+        }
     }
 }
 catch {

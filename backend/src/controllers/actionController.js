@@ -1,53 +1,13 @@
-const { actionRenderers } = require("../renderers/actionRenderers");
+const { getActionDefinition } = require("../actions/actionRegistry");
+const { renderRegisteredAction, renderUnknownAction } = require("../renderers/actionFormRenderer");
 
 const actionController = async (req, res) => {
     const action = (req.body && req.body.action) || (req.query && req.query.action);
+    const actionDefinition = getActionDefinition(action);
 
-    switch (action) {
-        case "viewTasks":
-            return actionRenderers.renderViewTasks(req, res);
+    if (!actionDefinition) return renderUnknownAction(res);
 
-        case "comment":
-            return actionRenderers.renderComment(req, res);
-
-        case "createTask":
-            return actionRenderers.renderCreateTask(req, res);
-
-        case "updateAssignedTask":
-            return actionRenderers.renderUpdateAssignedTask(req, res);
-
-        case "inviteMembers":
-            return actionRenderers.renderInviteMembers(req, res);
-
-        case "createProject":
-            return actionRenderers.renderCreateProject(req, res);
-
-        case "createTeam":
-            return actionRenderers.renderCreateTeam(req, res);
-
-        case "editProject":
-            return actionRenderers.renderEditProject(req, res);
-
-        case "updateProject":
-            return actionRenderers.renderUpdateProject(req, res);
-
-        case "deleteProject":
-            return actionRenderers.renderDeleteProject(req, res);
-
-        case "assignTask":
-            return actionRenderers.renderAssignTask(req, res);
-
-        case "deleteTask":
-            return actionRenderers.renderDeleteTask(req, res);
-
-        case "changeRoles":
-            return actionRenderers.renderChangeRoles(req, res);
-
-        default:
-            return actionRenderers.renderUnknownAction(res);
-    }
+    return renderRegisteredAction(req, res, actionDefinition);
 }
 
 module.exports = { actionController };
-
-
