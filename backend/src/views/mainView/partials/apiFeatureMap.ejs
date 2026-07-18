@@ -1,0 +1,26 @@
+<% if (apiFeatures && apiFeatures.length) { %>
+    <section class="api-feature-map glass-panel lithic-border" aria-labelledby="api-feature-map-title">
+        <div class="api-feature-header">
+            <div>
+                <p class="mono-kicker">API Feature Map</p>
+                <h2 id="api-feature-map-title">Connected backend features</h2>
+            </div>
+            <span class="role-chip">/v1/api</span>
+        </div>
+
+        <div class="api-feature-grid">
+            <% apiFeatures.forEach((feature) => { %>
+                <a class="api-feature-card" href="<%= feature.href %>">
+                    <span class="command-index"><%= feature.tag %></span>
+                    <strong><%= feature.group %></strong>
+                    <small><%= feature.text %></small>
+                    <span class="api-feature-endpoints">
+                        <% (feature.endpoints || [feature.endpoint]).forEach((endpoint) => { %>
+                            <code><%= endpoint %></code>
+                        <% }) %>
+                    </span>
+                </a>
+            <% }) %>
+        </div>
+    </section>
+<% } %>

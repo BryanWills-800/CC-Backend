@@ -1,6 +1,3 @@
-jest.mock("../services/actions/createProjectServices", () => ({
-    createProjectService: jest.fn(),
-}));
 
 jest.mock("../services/actions/teamServices", () => ({
     changeRolesService: jest.fn(),
@@ -18,6 +15,7 @@ jest.mock("../services/actions/taskServices", () => ({
 }));
 
 jest.mock("../services/actions/projectServices", () => ({
+    createProjectService: jest.fn(),
     deleteProjectService: jest.fn(),
     editProjectService: jest.fn(),
     updateProjectService: jest.fn(),
@@ -29,7 +27,7 @@ const request = require("supertest");
 const cookieParser = require("cookie-parser");
 const jwt = require("jsonwebtoken");
 const { actionController } = require("../controllers/actionController");
-const { createProjectService } = require("../services/actions/createProjectServices");
+const { createProjectService } = require("../services/actions/projectServices");
 const teamServices = require("../services/actions/teamServices");
 const taskServices = require("../services/actions/taskServices");
 const projectServices = require("../services/actions/projectServices");

@@ -88,6 +88,16 @@ describe("auth flow", () => {
         });
     });
 
+    test("signup returns 400 when required fields are missing", async () => {
+        const response = await request(createApp())
+            .post("/api/auth/signup")
+            .send({ name: "   ", email: "", password: "Password123!" });
+
+        expect(response.status).toBe(400);
+        expect(response.body).toEqual({ message: "Name, email, and password are required" });
+        expect(User.findByNameOrEmail).not.toHaveBeenCalled();
+        expect(User.create).not.toHaveBeenCalled();
+    });
     test("signup returns 409 when name or email already exists", async () => {
         User.findByNameOrEmail.mockResolvedValue({ id: "existing-user" });
 

@@ -48,6 +48,7 @@ describe("mainController role selection", () => {
             role: "admin",
             activePage: "dashboard",
             team: { teamId: undefined, teamName: undefined },
+            apiFeatures: expect.any(Array),
         });
     });
 
@@ -61,6 +62,7 @@ describe("mainController role selection", () => {
             role: "maintainer",
             activePage: "dashboard",
             team: { teamId: undefined, teamName: undefined },
+            apiFeatures: expect.any(Array),
         });
     });
 
@@ -74,6 +76,7 @@ describe("mainController role selection", () => {
             role: "admin",
             activePage: "dashboard",
             team: { teamId: undefined, teamName: undefined },
+            apiFeatures: expect.any(Array),
         });
     });
 
@@ -91,6 +94,7 @@ describe("mainController role selection", () => {
             role: "viewer",
             activePage: "dashboard",
             team: { teamId: undefined, teamName: undefined },
+            apiFeatures: expect.any(Array),
         });
     });
 
@@ -102,6 +106,7 @@ describe("mainController role selection", () => {
         expect(res.render).toHaveBeenCalledWith("consolePage", {
             role: "maintainer",
             team: { teamId: "team-1", teamName: "Team A" },
+            apiFeatures: expect.any(Array),
             page: expect.objectContaining({
                 activePage: "tasks",
                 title: "Task Operations",

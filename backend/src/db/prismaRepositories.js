@@ -24,7 +24,21 @@ const prismaRepositories = {
     User: {
         findById: (id) => getPrisma().user.findUnique({ where: { id } }),
         findByName: (name) => getPrisma().user.findFirst({ where: { name } }),
-        findByNameOrEmail: ({ name, email }) => getPrisma().user.findFirst({ where: { OR: [{ name }, { email }] } }),
+        findByNameOrEmail: ({ name, email }) => {
+            const conditions = [];
+            if (name) conditions.push({ name });
+            if (email) conditions.push({ email });
+
+            if (conditions.length === 0) {
+                return null;
+            }
+
+            return getPrisma().user.findFirst({
+                where: {
+                    OR: conditions,
+                }
+            });
+        },
         create: (data) => getPrisma().user.create({ data }),
         update: (id, data) => getPrisma().user.update({ where: { id }, data }),
         delete: (id) => getPrisma().user.delete({ where: { id } }),

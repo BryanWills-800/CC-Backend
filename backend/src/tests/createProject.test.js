@@ -9,7 +9,7 @@ const {
     createProjectService,
     normalizeProjectInput,
     validateProjectInput,
-} = require("../services/actions/createProjectServices");
+} = require("../services/actions/projectServices");
 const { createActionDeps } = require("./serviceTestUtils");
 
 describeFn("createProject service", () => {

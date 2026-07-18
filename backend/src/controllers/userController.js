@@ -35,6 +35,77 @@ const buildTeamOption = (membership) => {
 const findUserMemberships = async (userId) => prismaRepositories.TeamMembership.findForUser(userId);
 
 const findSelectedMembership = async ({ userId, teamId }) => prismaRepositories.TeamMembership.findForUserTeam({ userId, teamId });
+const ACTION_BASE_PATH = "/v1/api/content";
+
+const actionHref = (action) => `${ACTION_BASE_PATH}/actions?action=${action}`;
+
+const apiFeatureCatalog = [
+    {
+        group: "Teams",
+        tag: "TEAM",
+        text: "Create teams, inspect the selected team, and accept invitation-token joins.",
+        endpoints: ["POST /v1/api/teams", "GET /v1/api/teams/:teamId", "POST /v1/api/teams/:teamId/join"],
+        href: actionHref("createTeam"),
+    },
+    {
+        group: "Projects",
+        tag: "PROJ",
+        text: "List, create, update, inspect, and archive projects inside the selected team.",
+        endpoints: ["GET /v1/api/teams/:teamId/projects", "POST /v1/api/teams/:teamId/projects", "GET/PATCH/DELETE /v1/api/projects/:projectId"],
+        href: actionHref("createProject"),
+    },
+    {
+        group: "Tasks",
+        tag: "TASK",
+        text: "List filtered tasks, create project tasks, assign work, update status, and delete tasks.",
+        endpoints: ["GET /v1/api/teams/:teamId/tasks", "POST /v1/api/projects/:projectId/tasks", "GET/PATCH/DELETE /v1/api/tasks/:taskId", "POST /v1/api/tasks/:taskId/assignees"],
+        href: actionHref("viewTasks"),
+    },
+    {
+        group: "Members",
+        tag: "MEM",
+        text: "List team members, invite operators, and change scoped team roles.",
+        endpoints: ["GET /v1/api/teams/:teamId/members", "POST /v1/api/teams/:teamId/invitations", "PATCH /v1/api/teams/:teamId/members/:userId/role"],
+        href: actionHref("inviteMembers"),
+    },
+    {
+        group: "Comments",
+        tag: "NOTE",
+        text: "Read and add task comments without exposing raw IDs in the EJS action forms.",
+        endpoints: ["GET /v1/api/tasks/:taskId/comments", "POST /v1/api/tasks/:taskId/comments"],
+        href: actionHref("comment"),
+    },
+    {
+        group: "Activity",
+        tag: "LOG",
+        text: "Read team-scoped audit activity produced by project, task, comment, and member services.",
+        endpoints: ["GET /v1/api/teams/:teamId/activity"],
+        href: "/audit",
+    },
+    {
+        group: "Health",
+        tag: "DB",
+        text: "Check the Prisma/PostgreSQL runtime health endpoint.",
+        endpoints: ["GET /health"],
+        href: "/health",
+    },
+];
+
+const pageFeatureGroups = {
+    overview: ["Teams", "Projects", "Tasks", "Members", "Comments", "Activity", "Health"],
+    tasks: ["Tasks", "Comments"],
+    projects: ["Projects", "Tasks", "Activity"],
+    permissions: ["Teams", "Members"],
+    members: ["Members", "Comments"],
+    audit: ["Activity", "Health"],
+    notes: ["Teams", "Projects", "Tasks", "Members", "Comments", "Activity"],
+    settings: ["Health"],
+};
+
+const getApiFeatures = (pageName = "overview") => {
+    const groups = pageFeatureGroups[pageName] || pageFeatureGroups.overview;
+    return apiFeatureCatalog.filter((feature) => groups.includes(feature.group));
+}
 
 const consolePages = {
     overview: {
@@ -68,10 +139,10 @@ const consolePages = {
             { label: "Maintainer", value: "Assign", text: "Assign or remove task records through services." },
         ],
         panels: [
-            { title: "View Tasks", tag: "VIEW", text: "Inspect team or project task lanes.", href: "/api/content/actions?action=viewTasks" },
-            { title: "Create Task", tag: "TASK", text: "Create a project-scoped task.", href: "/api/content/actions?action=createTask" },
-            { title: "Assign Task", tag: "ASGN", text: "Attach an operator to a task.", href: "/api/content/actions?action=assignTask" },
-            { title: "Update Assigned Task", tag: "SYNC", text: "Update status, due date, or description.", href: "/api/content/actions?action=updateAssignedTask" },
+            { title: "View Tasks", tag: "VIEW", text: "Inspect team or project task lanes.", href: actionHref("viewTasks") },
+            { title: "Create Task", tag: "TASK", text: "Create a project-scoped task.", href: actionHref("createTask") },
+            { title: "Assign Task", tag: "ASGN", text: "Attach an operator to a task.", href: actionHref("assignTask") },
+            { title: "Update Assigned Task", tag: "SYNC", text: "Update status, due date, or description.", href: actionHref("updateAssignedTask") },
         ],
     },
     projects: {
@@ -87,10 +158,10 @@ const consolePages = {
             { label: "Audit", value: "Logged", text: "Project mutations write activity log records." },
         ],
         panels: [
-            { title: "Create Project", tag: "PROJ", text: "Provision a team-scoped project record.", href: "/api/content/actions?action=createProject" },
-            { title: "Edit Project", tag: "EDIT", text: "Load project metadata for review.", href: "/api/content/actions?action=editProject" },
-            { title: "Update Project", tag: "UPDT", text: "Patch metadata and workflow state.", href: "/api/content/actions?action=updateProject" },
-            { title: "Delete Project", tag: "ARCH", text: "Archive project records through service rules.", href: "/api/content/actions?action=deleteProject" },
+            { title: "Create Project", tag: "PROJ", text: "Provision a team-scoped project record.", href: actionHref("createProject") },
+            { title: "Edit Project", tag: "EDIT", text: "Load project metadata for review.", href: actionHref("editProject") },
+            { title: "Update Project", tag: "UPDT", text: "Patch metadata and workflow state.", href: actionHref("updateProject") },
+            { title: "Delete Project", tag: "ARCH", text: "Archive project records through service rules.", href: actionHref("deleteProject") },
         ],
     },
     permissions: {
@@ -106,8 +177,8 @@ const consolePages = {
             { label: "Admin", value: "Control", text: "Role mutation entry points." },
         ],
         panels: [
-            { title: "Change Roles", tag: "ROLE", text: "Update a member role through the team membership service.", href: "/api/content/actions?action=changeRoles" },
-            { title: "Invite Members", tag: "JOIN", text: "Create team invitations with scoped roles.", href: "/api/content/actions?action=inviteMembers" },
+            { title: "Change Roles", tag: "ROLE", text: "Update a member role through the team membership service.", href: actionHref("changeRoles") },
+            { title: "Invite Members", tag: "JOIN", text: "Create team invitations with scoped roles.", href: actionHref("inviteMembers") },
             { title: "Auth Guard", tag: "JWT", text: "Protected pages require a verified token before rendering." },
         ],
     },
@@ -124,9 +195,9 @@ const consolePages = {
             { label: "User Role", value: "Future", text: "User.role can be plucked later for dashboard defaults." },
         ],
         panels: [
-            { title: "Invite Members", tag: "JOIN", text: "Send a team invitation with a role.", href: "/api/content/actions?action=inviteMembers" },
-            { title: "Change Roles", tag: "ROLE", text: "Adjust member access from the permissions workflow.", href: "/api/content/actions?action=changeRoles" },
-            { title: "Comment", tag: "NOTE", text: "Collaborate through task comments.", href: "/api/content/actions?action=comment" },
+            { title: "Invite Members", tag: "JOIN", text: "Send a team invitation with a role.", href: actionHref("inviteMembers") },
+            { title: "Change Roles", tag: "ROLE", text: "Adjust member access from the permissions workflow.", href: actionHref("changeRoles") },
+            { title: "Comment", tag: "NOTE", text: "Collaborate through task comments.", href: actionHref("comment") },
         ],
     },
     audit: {
@@ -264,14 +335,14 @@ const deleteController = (req, res) => {
 const mainController = (req, res) => {
     const role = getResolvedRole(req);
 
-    res.render("main", { role, activePage: "dashboard", team: getSelectedTeam(req) });
+    res.render("main", { role, activePage: "dashboard", team: getSelectedTeam(req), apiFeatures: getApiFeatures("overview") });
 }
 
 const renderConsolePage = (pageName) => (req, res) => {
     const role = getResolvedRole(req);
     const page = consolePages[pageName] || consolePages.overview;
 
-    res.render("consolePage", { role, page, team: getSelectedTeam(req) });
+    res.render("consolePage", { role, page, team: getSelectedTeam(req), apiFeatures: getApiFeatures(page.activePage) });
 }
 
 module.exports = {

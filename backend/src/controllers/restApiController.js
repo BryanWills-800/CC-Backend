@@ -1,8 +1,7 @@
 const crypto = require("crypto");
 const { prismaHealthCheck } = require("../db/prismaConnect");
-const { prismaRepositories } = require("../db/prismaRepositories");
-const { createProjectService } = require("../services/actions/createProjectServices");
 const {
+    createProjectService,
     deleteProjectService,
     updateProjectService,
 } = require("../services/actions/projectServices");
@@ -12,7 +11,6 @@ const {
     createTaskService,
     deleteTaskService,
     updateTaskService,
-    viewTasksService,
 } = require("../services/actions/taskServices");
 const {
     changeRolesService,
@@ -20,10 +18,13 @@ const {
     inviteMembersService,
     joinTeamService,
 } = require("../services/actions/teamServices");
-const { VIEWER_LEVEL_ROLES, assertMembership, assertProjectExists, assertTaskExists, assertTeamExists } = require("../services/actions/shared");
+const { listActivityQuery } = require("../services/queries/activityQueries");
+const { listCommentsQuery } = require("../services/queries/commentQueries");
+const { listTeamMembersQuery } = require("../services/queries/memberQueries");
+const { getProjectQuery, listProjectsQuery } = require("../services/queries/projectQueries");
+const { getTaskQuery, listTasksQuery } = require("../services/queries/taskQueries");
+const { getTeamQuery } = require("../services/queries/teamQueries");
 const { sendError, sendNoContent, sendSuccess } = require("../utils/apiResponses");
-
-const deps = prismaRepositories;
 
 const getUserId = (req) => req.user && req.user.userId;
 const getAuditContext = (req) => ({ ipAddress: req.ip });
@@ -33,23 +34,6 @@ const runApi = (handler) => async (req, res) => {
     } catch (error) {
         return sendError(res, error);
     }
-};
-
-const requireTeamMember = async ({ teamId, userId }) => {
-    await assertTeamExists(teamId, deps);
-    return assertMembership({ teamId, userId, allowedRoles: VIEWER_LEVEL_ROLES }, deps);
-};
-
-const requireProjectMember = async ({ projectId, userId }) => {
-    const project = await assertProjectExists(projectId, deps);
-    await requireTeamMember({ teamId: project.teamId, userId });
-    return project;
-};
-
-const requireTaskMember = async ({ taskId, userId }) => {
-    const task = await assertTaskExists(taskId, deps);
-    await requireTeamMember({ teamId: task.teamId, userId });
-    return task;
 };
 
 const createTeam = runApi(async (req, res) => {
@@ -63,9 +47,8 @@ const createTeam = runApi(async (req, res) => {
 });
 
 const getTeam = runApi(async (req, res) => {
-    await requireTeamMember({ teamId: req.params.teamId, userId: getUserId(req) });
-    const team = await deps.Team.findById(req.params.teamId);
-    return sendSuccess(res, { message: "Team retrieved successfully.", data: team });
+    const result = await getTeamQuery({ teamId: req.params.teamId, userId: getUserId(req) });
+    return sendSuccess(res, { message: result.message, data: result.data });
 });
 
 const joinTeam = runApi(async (req, res) => {
@@ -80,9 +63,8 @@ const joinTeam = runApi(async (req, res) => {
 });
 
 const listTeamMembers = runApi(async (req, res) => {
-    await requireTeamMember({ teamId: req.params.teamId, userId: getUserId(req) });
-    const members = await deps.TeamMembership.findForTeam(req.params.teamId);
-    return sendSuccess(res, { message: `Found ${members.length} member(s).`, data: members });
+    const result = await listTeamMembersQuery({ teamId: req.params.teamId, userId: getUserId(req) });
+    return sendSuccess(res, { message: result.message, data: result.data });
 });
 
 const inviteTeamMember = runApi(async (req, res) => {
@@ -109,9 +91,8 @@ const changeTeamMemberRole = runApi(async (req, res) => {
 });
 
 const listProjects = runApi(async (req, res) => {
-    await requireTeamMember({ teamId: req.params.teamId, userId: getUserId(req) });
-    const projects = await deps.Project.findForTeam(req.params.teamId);
-    return sendSuccess(res, { message: `Found ${projects.length} project(s).`, data: projects });
+    const result = await listProjectsQuery({ teamId: req.params.teamId, userId: getUserId(req) });
+    return sendSuccess(res, { message: result.message, data: result.data });
 });
 
 const createProject = runApi(async (req, res) => {
@@ -126,8 +107,8 @@ const createProject = runApi(async (req, res) => {
 });
 
 const getProject = runApi(async (req, res) => {
-    const project = await requireProjectMember({ projectId: req.params.projectId, userId: getUserId(req) });
-    return sendSuccess(res, { message: "Project retrieved successfully.", data: project });
+    const result = await getProjectQuery({ projectId: req.params.projectId, userId: getUserId(req) });
+    return sendSuccess(res, { message: result.message, data: result.data });
 });
 
 const updateProject = runApi(async (req, res) => {
@@ -152,7 +133,7 @@ const deleteProject = runApi(async (req, res) => {
 });
 
 const listTasks = runApi(async (req, res) => {
-    const result = await viewTasksService({
+    const result = await listTasksQuery({
         teamId: req.params.teamId,
         projectId: req.query.projectId,
         status: req.query.status,
@@ -178,8 +159,8 @@ const createTask = runApi(async (req, res) => {
 });
 
 const getTask = runApi(async (req, res) => {
-    const task = await requireTaskMember({ taskId: req.params.taskId, userId: getUserId(req) });
-    return sendSuccess(res, { message: "Task retrieved successfully.", data: task });
+    const result = await getTaskQuery({ taskId: req.params.taskId, userId: getUserId(req) });
+    return sendSuccess(res, { message: result.message, data: result.data });
 });
 
 const updateTask = runApi(async (req, res) => {
@@ -215,9 +196,8 @@ const assignTask = runApi(async (req, res) => {
 });
 
 const listComments = runApi(async (req, res) => {
-    await requireTaskMember({ taskId: req.params.taskId, userId: getUserId(req) });
-    const comments = await deps.Comment.findForTask(req.params.taskId);
-    return sendSuccess(res, { message: `Found ${comments.length} comment(s).`, data: comments });
+    const result = await listCommentsQuery({ taskId: req.params.taskId, userId: getUserId(req) });
+    return sendSuccess(res, { message: result.message, data: result.data });
 });
 
 const createComment = runApi(async (req, res) => {
@@ -232,9 +212,8 @@ const createComment = runApi(async (req, res) => {
 });
 
 const listActivity = runApi(async (req, res) => {
-    await requireTeamMember({ teamId: req.params.teamId, userId: getUserId(req) });
-    const activity = await deps.ActivityLog.findForTeam(req.params.teamId);
-    return sendSuccess(res, { message: `Found ${activity.length} activity item(s).`, data: activity });
+    const result = await listActivityQuery({ teamId: req.params.teamId, userId: getUserId(req) });
+    return sendSuccess(res, { message: result.message, data: result.data });
 });
 
 const health = async (req, res) => {
@@ -276,4 +255,3 @@ module.exports = {
     updateProject,
     updateTask,
 };
-

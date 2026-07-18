@@ -29,7 +29,7 @@
             <a href="/settings"><span>08</span>Settings</a>
         </nav>
 
-        <form action="/api/auth/logout" method="post" class="sidebar-logout">
+        <form action="/v1/api/auth/logout" method="post" class="sidebar-logout">
             <button type="submit">Logout</button>
         </form>
     </aside>
@@ -45,7 +45,7 @@
                 <span class="pulse-dot" aria-hidden="true"></span>
                 <div>
                     <strong>Routes armed</strong>
-                    <small>/api/content/actions</small>
+                    <small>/v1/api/content/actions</small>
                 </div>
             </div>
         </header>
@@ -68,7 +68,7 @@
             </article>
         </div>
 
-        <form action="/api/content/actions" class="role-action-grid glass-panel lithic-border" method="GET">
+        <form action="/v1/api/content/actions" class="role-action-grid glass-panel lithic-border" method="GET">
             <div class="action-grid-header">
                 <div>
                     <p class="mono-kicker">Available Actions</p>
@@ -81,6 +81,8 @@
                 <%- include('./partials/commandButtons', { role }) %>
             </div>
         </form>
+
+        <%- include('./partials/apiFeatureMap', { apiFeatures }) %>
     </section>
 </section>
 

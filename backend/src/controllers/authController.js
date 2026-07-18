@@ -19,7 +19,14 @@ const User = prismaRepositories.User;
 
 const signup = async (req, res) => {
     try {
-        const { name, email, password } = req.body;
+        const { password } = req.body;
+        const name = req.body.name && req.body.name.trim();
+        const email = req.body.email && req.body.email.trim();
+
+        if (!name || !email || !password) {
+            return res.status(400).json({ message: "Name, email, and password are required" });
+        }
+
         const user = await User.findByNameOrEmail({ name, email });
         if (user) {
             return res.status(409).json({ message: "User already exists" });

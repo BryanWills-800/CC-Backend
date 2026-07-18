@@ -29,7 +29,7 @@
             <a class="<%= page.activePage === 'settings' ? 'is-active' : '' %>" href="/settings"><span>08</span>Settings</a>
         </nav>
 
-        <form action="/api/auth/logout" method="post" class="sidebar-logout">
+        <form action="/v1/api/auth/logout" method="post" class="sidebar-logout">
             <button type="submit">Logout</button>
         </form>
     </aside>
@@ -77,6 +77,8 @@
                 <% } %>
             <% }) %>
         </section>
+
+        <%- include('./partials/apiFeatureMap', { apiFeatures }) %>
     </section>
 </section>
 
